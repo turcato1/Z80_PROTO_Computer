@@ -1,14 +1,25 @@
+;===========================================================================
 ; Thiago Turcato do Rego - 2023
 ; Project: Z80 COOL, Z80 computer in breadboard
-; File: BIOS/Monitor program
+; File: BIOS program
+;===========================================================================
 
-; Beggining of Monitor program
-    .ORG 0000h
+; Compilation directives for allocating memory (no bank) and SLD file generation
+ DEVICE NOSLOT64K
+ SLDOPT COMMENT WPMEM, LOGPOINT, ASSERTION    
+
+; Variable definition
+RAMBEGIN    EQU 0x1000
+RAMSIZE     EQU 0x1000
+
+; Beggining of BIOS program
+    ORG 0000H
+entry_point:
 
 ; ********************** Main Program ********************** 
 
 ; Program setup & initialization
-    ld sp, 2000h ;Set stack pointer to the end of the ram        
+    LD SP, stack_top            ;Set stack pointer to the end of the ram        
 
 ; Welcome & alive message
     LD A,'Z'
@@ -30,32 +41,35 @@
     OUT (04H), A
 
 ; Test RAM memory (ADDR 1000H ~ 1FFF)
-    LD HL, 1000H    ;Set the memory pointer to first RAM address
-    LD BC, 1000H    ;Set the byte counter to memory size value
-MEMTEST1:           ;Test sequence writing 55H in all memory positions
+; MEMORY TEST 1, FILL W/ 55H
+.test_sys:
+    LD HL, RAMBEGIN                 ;Set the memory pointer to first RAM address
+    LD BC, RAMSIZE                  ;Set the byte counter to memory size value
+test_mem55:                         ;Begin test sequence writing 55H in all memory positions
     LD A, 55H
-    LD (HL), A      ;Write 55H in (HL) memory position
-    CPI             ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
-    JR NZ, RAM_BAD  ;If Z = 0, then A!=(HL), so memory fail
-    JP P, MEMTEST2  ;If BC-1=0 -> P = 1 -> memory end, else test next mem pos
-    JR MEMTEST1     ;Go to test next mem position
-    LD HL, 1000H    ;Set the memory pointer to first RAM address
-    LD BC, 1000H    ;Set the byte counter to memory size value
-MEMTEST2:           ;Test sequence writing 00H in all memory positions
+    LD (HL), A                      ;Write 55H in (HL) memory position
+    CPI                             ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
+    JR NZ, test_ram_bad             ;If Z = 0, then A!=(HL), so memory fail
+    JP PE, test_mem55               ;If BC-1 != 0 -> P = 1 -> Go to test next mem position
+                                    ;If execution is here CPI reached the memory end, go to next test
+; MEMORY TEST 2, FILL W/ 00H
+    LD HL, RAMBEGIN                 ;Set the memory pointer to first RAM address
+    LD BC, RAMSIZE                  ;Set the byte counter to memory size value
+test_mem00:                         ;Begin test sequence writing 00H in all memory positions
     LD A, 00H
-    LD (HL), A      ;Write 00H in (HL) memory position
-    CPI             ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
-    JR NZ, RAM_BAD  ;If Z = 0, then A!=(HL), so memory fail
-    JP P, RAM_OK    ;If BC-1=0 -> P = 1 -> memory end, else test next mem pos
-    JR MEMTEST2     ;Go to test next mem position
-RAM_OK:             ;Print message "RAM OK"
-    LD HL, MSG_RAMOK
-    CALL MSGTEST
-    JR TEST_END
-RAM_BAD:             ;Print message "RAM BAD"
-    LD HL, MSG_RAMBAD
-    CALL MSGTEST
-TEST_END:           ;From this point, RAM is good for use
+    LD (HL), A                      ;Write 00H in (HL) memory position
+    CPI                             ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
+    JR NZ, test_ram_bad                  ;If Z = 0, then A!=(HL), so memory fail
+    JP PE, test_mem00                ;If BC-1 != 0 -> P = 1 -> Go to test next mem position
+    JR ram_ok                       ;Go to test next mem position
+test_ram_ok:                             ;Print message "RAM OK"
+    LD HL, dmsg_ram_ok
+    CALL msg_sys
+    JR test_end
+test_ram_bad:                            ;Print message "RAM BAD"
+    LD HL, dmsg_ram_bad
+    CALL .msg_sys
+test_end:                           ;From this point, RAM is good for use
 
 ; Safety HALT
     HALT
@@ -67,64 +81,64 @@ TEST_END:           ;From this point, RAM is good for use
 ;  (03H)(02H)(01H)(00H)  (07H)(06H)(05H)(04H)
 
 
-MSGTEST:
+.msg_sys:
     EX AF, AF'      ;Preserves A and F registers
     LD B, 09        ;Loads BD with max. number of chars + 1 (9)
-MSG_BEGIN:
+msg_begin:
     LD A, 00h       ;Sets A reg as NUL char for searching string end
     LD D, (HL)      ;Retrieves the char from the current memory location
     CPI             ;Compare if (HL) position has a null char and Increment HL
-    JR Z, MSG_END  ;If Z = 1, then A=(HL), so message end
+    JR Z, MSG_END   ;If Z = 1, then A=(HL), so message end
     DEC B
     LD A, B         ;Loads current char position in the string
-MSGD1:
+msg_disp1:
     CP 08           ;1st character printing
     JR NZ, MSGD2    
     LD C, 03H
     OUT (C), D
-    JR MSG_BEGIN
-MSGD2:              ;2nd character printing
+    JR msg_begin
+msg_disp2:              ;2nd character printoing
     CP 07
-    JR NZ, MSGD3
+    JR NZ, msg_disp3
     LD C, 02H
     OUT (C), D
     JR MSG_BEGIN
-MSGD3:              ;3rd character printing
+msg_disp3:              ;3rd character printing
     CP 06
     JR NZ, MSGD4
     LD C, 01H
     OUT (C), D
     JR MSG_BEGIN
-MSGD4:              ;4rd character printing
+msg_disp4:              ;4rd character printing
     CP 05
     JR NZ, MSGD5
     LD C, 00H
     OUT (C), D
     JR MSG_BEGIN
-MSGD5:
+msg_disp5:
     CP 04           ;1st character printing
     JR NZ, MSGD6    
     LD C, 07H
     OUT (C), D
     JR MSG_BEGIN
-MSGD6:              ;2nd character printing
+msg_disp6:              ;2nd character printing
     CP 03
     JR NZ, MSGD7
     LD C, 06H
     OUT (C), D
     JR MSG_BEGIN
-MSGD7:              ;3rd character printing
+msg_disp7:              ;3rd character printing
     CP 02
     JR NZ, MSGD8
     LD C, 05H
     OUT (C), D
     JR MSG_BEGIN
-MSGD8:              ;4rd character printing
+msg_disp8:              ;4rd character printing
     CP 01
     JR NZ, MSG_END
     LD C, 04H
     OUT (C), D
-MSG_END:
+msg_end:
     RET
 
 ;Print messages in display
@@ -193,9 +207,15 @@ PRN_END:
 ;    RET
 
 ; Text messages
-MSG_HELLO EQU $
+dmsg_hello EQU $
     DB "Z80 COOL", 00h
-MSG_RAMOK EQU $
+dmsg_ram_ok EQU $
     DB "ROM OK  ", 00h
-MSG_RAMBAD EQU $
+dmsg_ram_bad EQU $
     DB "ROM BAD ", 00h
+
+;Stack pointer definition
+    ORG 2000H
+stack_bottom:   ; 100 bytes of stack
+    DEFS 100, 0
+stack_top:   
