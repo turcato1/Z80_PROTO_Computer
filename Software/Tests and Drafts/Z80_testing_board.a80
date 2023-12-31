@@ -1,0 +1,149 @@
+; Z80 computer in breadboard
+; First test loaded in EEPROM
+
+
+; Text messages
+    .org 0100h
+    DB "HI  Z80 ", 00h
+    DB "ROM OK  ", 00h
+    DB "ROM BAD ", 00h
+
+
+; Beggining of Monitor program
+    .ORG 0000h
+
+; ********************** Main Program ********************** 
+
+; Program setup & initialization
+    ld sp, 2000h ;Set stack pointer to the end of the ram        
+
+
+; Welcome & alive message
+    .ORG    0x0000 
+    LD A,'H'
+    OUT (03H), A
+    LD A,'I'
+    OUT (02H), A
+    LD A,' '
+    OUT (01H), A
+    LD A,' '
+    OUT (00H), A
+
+    LD A,'Z'
+    OUT (07H), A
+    LD A,'8'
+    OUT (06H), A
+    LD A,'0'
+    OUT (05H), A
+    LD A,' '
+    OUT (04H), A
+
+; Test RAM memory (ADDR 1000H AND 1FFF)
+    LD HL, 1000H    ;Set the memory pointer to first RAM address
+    LD BC, 1000H    ;Set the byte counter to memory size value
+MEMTEST1:           ;Test sequence writing 55H in all memory positions
+    LD A, 55H
+    LD (HL), A      ;Write 55H in (HL) memory position
+    CPI             ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
+    JR NZ, RAM_BAD  ;If Z = 0, then A!=(HL), so memory fail
+    JP P, MEMTEST2  ;If BC-1=0 -> P = 1 -> memory end, else test next mem pos
+    JR MEMTEST1     ;Go to test next mem position
+    LD HL, 1000H    ;Set the memory pointer to first RAM address
+    LD BC, 1000H    ;Set the byte counter to memory size value
+MEMTEST2:           ;Test sequence writing 00H in all memory positions
+    LD A, 00H
+    LD (HL), A      ;Write 00H in (HL) memory position
+    CPI             ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
+    JR NZ, RAM_BAD  ;If Z = 0, then A!=(HL), so memory fail
+    JP P, RAM_OK    ;If BC-1=0 -> P = 1 -> memory end, else test next mem pos
+    JR MEMTEST2     ;Go to test next mem position
+RAM_OK:             ;Print message "RAM OK"
+    LD A,'R'
+    OUT (03H), A
+    LD A,'A'
+    OUT (02H), A
+    LD A,'M'
+    OUT (01H), A
+    LD A,' '
+    OUT (00H), A
+    LD A,'O'
+    OUT (07H), A
+    LD A,'K'
+    OUT (06H), A
+    LD A,' '
+    OUT (05H), A
+    LD A,' '
+    OUT (04H), A
+    JR TEST_END
+RAM_BAD:             ;Print message "RAM BAD"
+    LD A, 'R'
+    OUT (03H), A
+    LD A, 'A'
+    OUT (02H), A
+    LD A, 'M'
+    OUT (01H), A
+    LD A, ' '
+    OUT (00H), A
+    LD A, 'B'
+    OUT (07H), A
+    LD A, 'A'
+    OUT (06H), A
+    LD A, 'D'
+    OUT (05H), A
+    LD A, ' '
+    OUT (04H), A
+    HALT            ;Halt execution due to RAM memory error
+TEST_END:           ;From this point, RAM is good for use
+                    
+
+
+; Safety HALT
+    HALT
+
+; ********************** Subroutines ********************** 
+
+;Print messages in display
+;  D = defines value type to print
+;       00H = ASCII, lenght = until NUL char is found or len >= 8
+;       01H = Hexadecimal
+;  Character position in display:
+;  (03H)(02H)(01H)(00H)  (07H)(06H)(05H)(04H)
+PRINT:
+    EX AF, AF'      ;Save current accumulator/flag values
+    PUSH BC
+    LD A, 01H
+    CP D
+    JR NZ, PRN_HEX
+    DEC A
+    CP D
+    JR NZ, PRN_ASC
+    JR PRN_END
+PRN_HEX:
+;   TO DO
+    JR PRN_END
+PRN_ASC:
+    LD C, 04H
+PLOOP1:             ;Print in first display chunk, I/O = 03h ~ 00H
+    LD A, (HL)
+    ADD A, 00H
+    JR Z, PRN_END   ;Found NUL char
+    DEC C
+    OUT (C), A
+    INC HL
+    CP C
+    JR NZ, PLOOP1
+    LD C, 07H
+PLOOP2:             ;Print in second display chunk, I/O = 07h ~ 04H
+    LD A, (HL)
+    ADD A, 00H
+    JR Z, PRN_END   ;Found NUL char
+    DEC C
+    OUT (C), A
+    INC HL
+    LD A, 04H
+    CP C
+    JR NZ, PLOOP2
+PRN_END:
+    POP BC
+    EX AF, AF'
+    RET
