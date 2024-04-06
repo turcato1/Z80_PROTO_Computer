@@ -1,5 +1,5 @@
 #Z80 PROTO: The Z80 didactic computer on breadboard
-#(br-pt): O computador didático em protoboard
+(br-pt): O computador didático em protoboard
 
 (en)
 This repository contains the files for assembling a Z80 processor-based didactic computer.
