@@ -1,6 +1,6 @@
 # Z80 PROTO 
-## (en) The Z80 didactic computer on breadboard
-## (br-pt) O computador didático em protoboard
+# The Z80 didactic computer on breadboard (en)
+# O computador didático em protoboard (br-pt)
 
 ![Z80 PROTO](/assets/Z80_PROTO_1.6.1.png)
 
