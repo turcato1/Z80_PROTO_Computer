@@ -1,5 +1,8 @@
 # Z80 PROTO: (en) The Z80 didactic computer on breadboard / (br-pt) O computador didático em protoboard
 
+![Z80 PROTO](/assets/Z80_PROTO_1.6.1.png)
+
+
 (en)
 
 This repository contains the files for assembling a Z80 processor-based didactic computer.
@@ -20,5 +23,3 @@ Nesse repositório você irá encontrar tanto documentação de hardware, como d
 construir o computador.
 
 Você pode ver fotos e vídeos desse computador na [playlist do YouTube](https://www.youtube.com/playlist?list=PL03mfBX_FpVMWf8mnlIiYQl7pk0ofOGhl)
-
-![Z80 PROTO](/assets/Z80_PROTO_1.6.1.png)
