@@ -20,3 +20,5 @@ Nesse repositório você irá encontrar tanto documentação de hardware, como d
 construir o computador.
 
 Você pode ver fotos e vídeos desse computador na [playlist do YouTube](https://www.youtube.com/playlist?list=PL03mfBX_FpVMWf8mnlIiYQl7pk0ofOGhl)
+
+![Z80 PROTO]( )
