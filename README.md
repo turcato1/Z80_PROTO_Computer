@@ -21,4 +21,4 @@ construir o computador.
 
 Você pode ver fotos e vídeos desse computador na [playlist do YouTube](https://www.youtube.com/playlist?list=PL03mfBX_FpVMWf8mnlIiYQl7pk0ofOGhl)
 
-![Z80 PROTO]( )
+![Z80 PROTO](https://github.com/turcato1/Z80_PROTO_Computer/assets/Z80_PROTO_1.6.1.png)
