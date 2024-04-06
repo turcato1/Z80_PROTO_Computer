@@ -10,7 +10,7 @@
 # Not important files #
 #######################
 *.log
-#*.dbk
+*.dbk
 
 
 # Packages #

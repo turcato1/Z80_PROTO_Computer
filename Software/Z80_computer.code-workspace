@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"z80-macroasm.files.include": "**/*.{a80,asm,inc,s,z80}"
+	}
+}

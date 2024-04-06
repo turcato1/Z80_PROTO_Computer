@@ -2,228 +2,471 @@
   1   0000              ;===========================================================================
   2   0000              ; Thiago Turcato do Rego - 2023
   3   0000              ; Project: Z80 COOL, Z80 computer in breadboard
-  4   0000              ; File: BIOS/Monitor program
+  4   0000              ; File: BIOS program
   5   0000              ;===========================================================================
   6   0000
-  7   0000              ; Compilation directives for allocating memory (no bank) and SLD file generation
-  8   0000               DEVICE NOSLOT64K
-  9   0000               SLDOPT COMMENT WPMEM, LOGPOINT, ASSERTION
- 10   0000
- 11   0000              ; Variable definition
- 12   0000              RAMBEGIN EQU 0x1000
- 13   0000              RAMSIZE EQU 0x1000
- 14   0000
- 15   0000              ; Beggining of Monitor program
- 16   0000                  ORG 0000H
- 17   0000              entry_point:
- 18   0000
- 19   0000              ; ********************** Main Program **********************
- 20   0000
- 21   0000              ; Program setup & initialization
- 22   0000 31 64 20         LD SP, stack_top    ;Set stack pointer to the end of the ram
- 23   0003
- 24   0003              ; Welcome & alive message
- 25   0003 3E 5A            LD A,'Z'
- 26   0005 D3 03            OUT (03H), A
- 27   0007 3E 38            LD A,'8'
- 28   0009 D3 02            OUT (02H), A
- 29   000B 3E 30            LD A,'0'
- 30   000D D3 01            OUT (01H), A
- 31   000F 3E 20            LD A,' '
- 32   0011 D3 00            OUT (00H), A
- 33   0013
- 34   0013 3E 43            LD A,'C'
- 35   0015 D3 07            OUT (07H), A
- 36   0017 3E 4F            LD A,'O'
- 37   0019 D3 06            OUT (06H), A
- 38   001B 3E 4F            LD A,'O'
- 39   001D D3 05            OUT (05H), A
- 40   001F 3E 4C            LD A,'L'
- 41   0021 D3 04            OUT (04H), A
- 42   0023
- 43   0023              ; Test RAM memory (ADDR 1000H ~ 1FFF)
- 44   0023              ; MEMORY TEST 1, FILL W/ 55H
- 45   0023 21 00 10         LD HL, RAMBEGIN    ;Set the memory pointer to first RAM address
- 46   0026 01 00 10         LD BC, RAMSIZE    ;Set the byte counter to memory size value
- 47   0029              MEMTEST55:          ;Begin test sequence writing 55H in all memory positions
- 48   0029 3E 55            LD A, 55H
- 49   002B 77               LD (HL), A      ;Write 55H in (HL) memory position
- 50   002C ED A1            CPI             ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
- 51   002E 20 1D            JR NZ, RAM_BAD  ;If Z = 0, then A!=(HL), so memory fail
- 52   0030 EA 29 00         JP PE, MEMTEST55 ;If BC-1 != 0 -> P = 1 -> Go to test next mem position
- 53   0033                                   ;If execution is here CPI reached the memory end, go to next test
- 54   0033              ; MEMORY TEST 2, FILL W/ 00H
- 55   0033 21 00 10         LD HL, RAMBEGIN    ;Set the memory pointer to first RAM address
- 56   0036 01 00 10         LD BC, RAMSIZE    ;Set the byte counter to memory size value
- 57   0039              MEMTEST00:          ;Begin test sequence writing 00H in all memory positions
- 58   0039 3E 00            LD A, 00H
- 59   003B 77               LD (HL), A      ;Write 00H in (HL) memory position
- 60   003C ED A1            CPI             ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
- 61   003E 20 0D            JR NZ, RAM_BAD  ;If Z = 0, then A!=(HL), so memory fail
- 62   0040 EA 39 00         JP PE, MEMTEST00 ;If BC-1 != 0 -> P = 1 -> Go to test next mem position
- 63   0043 18 00            JR RAM_OK       ;Go to test next mem position
- 64   0045              RAM_OK:             ;Print message "RAM OK"
- 65   0045 21 E8 00         LD HL, MSG_RAMOK
- 66   0048 CD 54 00         CALL MSGTEST
- 67   004B 18 06            JR TEST_END
- 68   004D              RAM_BAD:             ;Print message "RAM BAD"
- 69   004D 21 F1 00         LD HL, MSG_RAMBAD
- 70   0050 CD 54 00         CALL MSGTEST
- 71   0053              TEST_END:           ;From this point, RAM is good for use
- 72   0053
- 73   0053              ; Safety HALT
- 74   0053 76               HALT
- 75   0054
- 76   0054              ; ********************** Subroutines **********************
- 77   0054              ;Print test messages in display (assuming the ram is not available for stack)
- 78   0054              ;  HL = defines message text location in ROM
- 79   0054              ;  Character position in display:
- 80   0054              ;  (03H)(02H)(01H)(00H)  (07H)(06H)(05H)(04H)
- 81   0054
- 82   0054
- 83   0054              MSGTEST:
- 84   0054 08               EX AF, AF'      ;Preserves A and F registers
- 85   0055 06 09            LD B, 09        ;Loads BD with max. number of chars + 1 (9)
- 86   0057              MSG_BEGIN:
- 87   0057 3E 00            LD A, 00h       ;Sets A reg as NUL char for searching string end
- 88   0059 56               LD D, (HL)      ;Retrieves the char from the current memory location
- 89   005A ED A1            CPI             ;Compare if (HL) position has a null char and Increment HL
- 90   005C 28 50            JR Z, MSG_END   ;If Z = 1, then A=(HL), so message end
- 91   005E 05               DEC B
- 92   005F 78               LD A, B         ;Loads current char position in the string
- 93   0060              MSGD1:
- 94   0060 FE 08            CP 08           ;1st character printing
- 95   0062 20 06            JR NZ, MSGD2
- 96   0064 0E 03            LD C, 03H
- 97   0066 ED 51            OUT (C), D
- 98   0068 18 ED            JR MSG_BEGIN
- 99   006A              MSGD2:              ;2nd character printing
-100   006A FE 07            CP 07
-101   006C 20 06            JR NZ, MSGD3
-102   006E 0E 02            LD C, 02H
-103   0070 ED 51            OUT (C), D
-104   0072 18 E3            JR MSG_BEGIN
-105   0074              MSGD3:              ;3rd character printing
-106   0074 FE 06            CP 06
-107   0076 20 06            JR NZ, MSGD4
-108   0078 0E 01            LD C, 01H
-109   007A ED 51            OUT (C), D
-110   007C 18 D9            JR MSG_BEGIN
-111   007E              MSGD4:              ;4rd character printing
-112   007E FE 05            CP 05
-113   0080 20 06            JR NZ, MSGD5
-114   0082 0E 00            LD C, 00H
-115   0084 ED 51            OUT (C), D
-116   0086 18 CF            JR MSG_BEGIN
-117   0088              MSGD5:
-118   0088 FE 04            CP 04           ;1st character printing
-119   008A 20 06            JR NZ, MSGD6
-120   008C 0E 07            LD C, 07H
-121   008E ED 51            OUT (C), D
-122   0090 18 C5            JR MSG_BEGIN
-123   0092              MSGD6:              ;2nd character printing
-124   0092 FE 03            CP 03
-125   0094 20 06            JR NZ, MSGD7
-126   0096 0E 06            LD C, 06H
-127   0098 ED 51            OUT (C), D
-128   009A 18 BB            JR MSG_BEGIN
-129   009C              MSGD7:              ;3rd character printing
-130   009C FE 02            CP 02
-131   009E 20 06            JR NZ, MSGD8
-132   00A0 0E 05            LD C, 05H
-133   00A2 ED 51            OUT (C), D
-134   00A4 18 B1            JR MSG_BEGIN
-135   00A6              MSGD8:              ;4rd character printing
-136   00A6 FE 01            CP 01
-137   00A8 20 04            JR NZ, MSG_END
-138   00AA 0E 04            LD C, 04H
-139   00AC ED 51            OUT (C), D
-140   00AE              MSG_END:
-141   00AE C9               RET
-142   00AF
-143   00AF              ;Print messages in display
-144   00AF              ;  D = defines value type to print
-145   00AF              ;       00H = ASCII, lenght = until NUL char is found or len >= 8
-146   00AF              ;       01H = Hexadecimal
-147   00AF              ;  Character position in display:
-148   00AF              ;  (03H)(02H)(01H)(00H)  (07H)(06H)(05H)(04H)
-149   00AF              PRINT:
-150   00AF 08               EX AF, AF'      ;Save current accumulator/flag values
-151   00B0 C5               PUSH BC
-152   00B1 3E 01            LD A, 01H
-153   00B3 BA               CP D
-154   00B4 20 06            JR NZ, PRN_HEX
-155   00B6 3D               DEC A
-156   00B7 BA               CP D
-157   00B8 20 04            JR NZ, PRN_ASC
-158   00BA 18 20            JR PRN_END
-159   00BC              PRN_HEX:
-160   00BC              ;   TO DO
-161   00BC 18 1E            JR PRN_END
-162   00BE              PRN_ASC:
-163   00BE 0E 04            LD C, 04H
-164   00C0              PLOOP1:             ;Print in first display chunk, I/O = 03h ~ 00H
-165   00C0 7E               LD A, (HL)
-166   00C1 C6 00            ADD A, 00H
-167   00C3 28 17            JR Z, PRN_END   ;Found NUL char
-168   00C5 0D               DEC C
-169   00C6 ED 79            OUT (C), A
-170   00C8 23               INC HL
-171   00C9 B9               CP C
-172   00CA 20 F4            JR NZ, PLOOP1
-173   00CC 0E 07            LD C, 07H
-174   00CE              PLOOP2:             ;Print in second display chunk, I/O = 07h ~ 04H
-175   00CE 7E               LD A, (HL)
-176   00CF C6 00            ADD A, 00H
-177   00D1 28 09            JR Z, PRN_END   ;Found NUL char
-178   00D3 0D               DEC C
-179   00D4 ED 79            OUT (C), A
-180   00D6 23               INC HL
-181   00D7 3E 04            LD A, 04H
-182   00D9 B9               CP C
-183   00DA 20 F2            JR NZ, PLOOP2
-184   00DC              PRN_END:
-185   00DC C1               POP BC
-186   00DD 08               EX AF, AF'
-187   00DE C9               RET
-188   00DF              ;Delay
-189   00DF              ;  D = defines value type to print
-190   00DF              ;       00H = ASCII, lenght = until NUL char is found or len >= 8
-191   00DF              ;       01H = Hexadecimal
-192   00DF              ;  Character position in display:
-193   00DF              ;  (03H)(02H)(01H)(00H)  (07H)(06H)(05H)(04H)
-194   00DF              ;DELAY:
-195   00DF              ;    EX AF, AF'      ;Save current accumulator/flag values
-196   00DF              ;    LD A, FFH
-197   00DF              ;    LD B, FFH
-198   00DF              ;DLY1:
-199   00DF              ;    DJNZ A, DLY2
-200   00DF              ;;    JR DLY_END
-201   00DF              ;DLY2:
-202   00DF              ;    DJNZ B, DLY2
-203   00DF              ;    JR DLY1
-204   00DF              ;DLY_END:
-205   00DF              ;    EX AF, AF'
-206   00DF              ;    RET
-207   00DF
-208   00DF              ; Text messages
-209   00DF              MSG_HELLO EQU $
-210   00DF 5A 38 30 20      DB "Z80 COOL", 00h
-210   00E3 43 4F 4F 4C
-210   00E7 00
-211   00E8              MSG_RAMOK EQU $
-212   00E8 52 4F 4D 20      DB "ROM OK  ", 00h
-212   00EC 4F 4B 20 20
-212   00F0 00
-213   00F1              MSG_RAMBAD EQU $
-214   00F1 52 4F 4D 20      DB "ROM BAD ", 00h
-214   00F5 42 41 44 20
-214   00F9 00
-215   00FA
-216   00FA              ;Stack pointer definition
-217   00FA                  ORG 2000H
-218   2000              stack_bottom:   ; 100 bytes of stack
-219   2000 00 00 00...          defs    100, 0
-220   2064              stack_top:
-221   2064
+  7   0000              ;============ TERMINOLOGY, CONVENTIONS AND ORGANIZATION ====================
+  8   0000              ; -- TERMINOLOGIES --
+  9   0000              ; subr.  = subroutines
+ 10   0000              ; drcly = directly
+ 11   0000              ; aux. = auxiliary
+ 12   0000              ;
+ 13   0000              ; -- SYMBOLS CONVENTIONS --
+ 14   0000              ; - Symbols in UPPER CASE LETTERS = constants
+ 15   0000              ; - Labels starting with "." are local jump entry points
+ 16   0000              ; - Labels starting with "_" are local subroutines (aux. subr.)
+ 17   0000              ; - Labels starting with lower case letters (except for the cases below)
+ 18   0000              ;    are general function calls, open to any user
+ 19   0000              ; - Labels starting with "dmsg_" are ascii text formated messages to use
+ 20   0000              ;    for display (user interface messages)
+ 21   0000              ;
+ 22   0000              ;=============================================================================
+ 23   0000
+ 24   0000              ; Compilation directives for allocating memory (no bank) and SLD file generation
+ 25   0000               DEVICE NOSLOT64K
+ 26   0000               SLDOPT COMMENT WPMEM, LOGPOINT, ASSERTION
+ 27   0000
+ 28   0000              ;******** Constants definition ********
+ 29   0000              ; RAM first address and size
+ 30   0000              RAMBEGIN            EQU 4000H
+ 31   0000              RAMSIZE             EQU 2000H
+ 32   0000
+ 33   0000              ; I/O addresses
+ 34   0000              DSKY_LCDDATA        EQU 10H
+ 35   0000              DSKY_KEYB           EQU 11H
+ 36   0000              DSKY_LCDE_RW_RS     EQU 12H
+ 37   0000              DSKY_IOSETUP        EQU 13H
+ 38   0000
+ 39   0000
+ 40   0000              ;******** Beggining of BIOS program ********
+ 41   0000                  ORG 2000H
+ 42   2000              entry_point:
+ 43   2000
+ 44   2000              ; ********************** Main Program **********************
+ 45   2000
+ 46   2000              ; Program setup & initialization
+ 47   2000 31 F0 5F         LD SP, 5FF0H        ;Set stack pointer to the end of the ram
+ 48   2003
+ 49   2003
+ 50   2003              ; Board initialization without RAM memory
+ 51   2003
+ 52   2003              ; 8255 PIO setup
+ 53   2003              ; Port A = output, Port B = input, Port C = output
+ 54   2003 0E 13            LD C, DSKY_IOSETUP
+ 55   2005 16 80            LD D, 80H
+ 56   2007 ED 51            OUT (C), D              ;Define 8255 mode and ports functions
+ 57   2009
+ 58   2009              ; DSKY LCD setup
+ 59   2009 0E 12            LD C, DSKY_LCDE_RW_RS
+ 60   200B 16 00            LD D, 00H
+ 61   200D ED 51            OUT (C), D              ;Reset E pin
+ 62   200F 16 01            LD D, 01H               ; * CLEAR LCD *
+ 63   2011 0E 10            LD C, DSKY_LCDDATA
+ 64   2013 ED 51            OUT (C), D              ;Send LCD setup command
+ 65   2015 0E 12            LD C, DSKY_LCDE_RW_RS
+ 66   2017 16 04            LD D, 04H
+ 67   2019 ED 51            OUT (C), D              ;Set E pin
+ 68   201B 06 05            LD B, 5
+ 69   201D              .ini_dly_clearlcd:
+ 70   201D 10 FE            DJNZ .ini_dly_clearlcd
+ 71   201F 0E 12            LD C, DSKY_LCDE_RW_RS
+ 72   2021 16 00            LD D, 00H
+ 73   2023 ED 51            OUT (C), D              ;Reset E pin
+ 74   2025 16 38            LD D, 38H               ; * 8 BIT MODE *
+ 75   2027 0E 10            LD C, DSKY_LCDDATA
+ 76   2029 ED 51            OUT (C), D              ;Send LCD setup command
+ 77   202B 0E 12            LD C, DSKY_LCDE_RW_RS
+ 78   202D 16 04            LD D, 04H
+ 79   202F ED 51            OUT (C), D              ;Set E pin
+ 80   2031 06 05            LD B, 5
+ 81   2033              .ini_dly_eightbitmd:
+ 82   2033 10 FE            DJNZ .ini_dly_eightbitmd
+ 83   2035 0E 12            LD C, DSKY_LCDE_RW_RS
+ 84   2037 16 00            LD D, 00H
+ 85   2039 ED 51            OUT (C), D              ;Reset E pin
+ 86   203B 16 80            LD D, 80H               ; * SETS CURSOR TO TOP LINE 1ST POSITION *
+ 87   203D 0E 10            LD C, DSKY_LCDDATA
+ 88   203F ED 51            OUT (C), D              ;Send LCD setup command
+ 89   2041 0E 12            LD C, DSKY_LCDE_RW_RS
+ 90   2043 16 04            LD D, 04H
+ 91   2045 ED 51            OUT (C), D              ;Set E pin
+ 92   2047 06 05            LD B, 5
+ 93   2049              .ini_dly_firstpos:
+ 94   2049 10 FE            DJNZ .ini_dly_firstpos
+ 95   204B 0E 12            LD C, DSKY_LCDE_RW_RS
+ 96   204D 16 00            LD D, 00H
+ 97   204F ED 51            OUT (C), D              ;Reset E pin
+ 98   2051 16 0C            LD D, 0CH               ; * SETS DISPLAY ON, CURSOR OFF, NO BLINKING *
+ 99   2053 0E 10            LD C, DSKY_LCDDATA
+100   2055 ED 51            OUT (C), D              ;Send LCD setup command
+101   2057 0E 12            LD C, DSKY_LCDE_RW_RS
+102   2059 16 04            LD D, 04H
+103   205B ED 51            OUT (C), D              ;Set E pin
+104   205D 06 05            LD B, 5
+105   205F              .ini_dly_cursormd:
+106   205F 10 FE            DJNZ .ini_dly_cursormd
+107   2061 0E 12            LD C, DSKY_LCDE_RW_RS
+108   2063 16 00            LD D, 00H
+109   2065 ED 51            OUT (C), D              ;Reset E pin
+110   2067 16 06            LD D, 06H               ; * SETS CURSOR MOVING RIGHT AND NO TEXT SHIFTING *
+111   2069 0E 10            LD C, DSKY_LCDDATA
+112   206B ED 51            OUT (C), D              ;Send LCD setup command
+113   206D 0E 12            LD C, DSKY_LCDE_RW_RS
+114   206F 16 04            LD D, 04H
+115   2071 ED 51            OUT (C), D              ;Set E pin
+116   2073 06 05            LD B, 5
+117   2075              .ini_dly_cursorinc:
+118   2075 10 FE            DJNZ .ini_dly_cursorinc
+119   2077 0E 12            LD C, DSKY_LCDE_RW_RS
+120   2079 16 00            LD D, 00H
+121   207B ED 51            OUT (C), D              ;Reset E pin
+122   207D
+123   207D              ; Welcome & alive message
+124   207D 21 F5 21         LD HL, dmsg_hello       ;Points HL to welcome message
+125   2080 1E 00            LD E, 00H               ;Initializes char counter (Reg E)
+126   2082              .ini_loop:
+127   2082 3E 00            LD A, 00H               ;Sets A reg as NUL char for searching string end
+128   2084 56               LD D, (HL)              ;Retrieves the char from the current memory location
+129   2085 ED A1            CPI                     ;Compare if (HL) position has a null char and Increment HL
+130   2087 28 13            JR Z, .ini_end          ;If Z = 1, then A=(HL), so message end
+131   2089 0E 10            LD C, DSKY_LCDDATA
+132   208B ED 51            OUT (C), D              ;Send LCD setup command
+133   208D 0E 12            LD C, DSKY_LCDE_RW_RS
+134   208F 16 05            LD D, 05H
+135   2091 ED 51            OUT (C), D              ;Set E and RS pins
+136   2093 16 00            LD D, 00H
+137   2095 ED 51            OUT (C), D              ;Reset E and RS pins
+138   2097 1C               INC E                   ;Increment char printed
+139   2098 FE 0F            CP 15
+140   209A 20 E6            JR NZ, .ini_loop
+141   209C              .ini_end:
+142   209C
+143   209C              ; Test RAM memory (ADDR RAMBEGIN ~ RAMBEGIN+RAMSIZE-1)
+144   209C              ; MEMORY TEST 1, FILL W/ 55H
+145   209C              test_sys:
+146   209C 21 00 40         LD HL, RAMBEGIN         ;Set the memory pointer to first RAM address
+147   209F ED 4B FF 1F      LD BC, (RAMSIZE-1)      ;Set the byte counter to memory size value
+148   20A3              .test_mem55:                ;Begin test sequence writing 55H in all memory positions
+149   20A3 3E 55            LD A, 55H
+150   20A5 77               LD (HL), A              ;Write 55H in (HL) memory position
+151   20A6 ED A1            CPI                     ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
+152   20A8 20 21            JR NZ, .test_ram_bad    ;If Z = 0, then A!=(HL), so memory fail
+153   20AA EA A3 20         JP PE, .test_mem55      ;If BC-1 != 0 -> P = 1 -> Go to test next mem position
+154   20AD                                          ;If execution is here CPI reached the memory end, go to next test
+155   20AD              ; MEMORY TEST 2, FILL W/ 00H
+156   20AD 21 00 40         LD HL, RAMBEGIN         ;Set the memory pointer to first RAM address
+157   20B0 ED 4B FF 1F      LD BC, (RAMSIZE-1)      ;Set the byte counter to memory size value
+158   20B4              .test_mem00:                ;Begin test sequence writing 00H in all memory positions
+159   20B4 3E 00            LD A, 00H
+160   20B6 77               LD (HL), A              ;Write 00H in (HL) memory position
+161   20B7 ED A1            CPI                     ;Increment HL, Decrement BC and if A=(HL) -> Z = 1
+162   20B9 20 10            JR NZ, .test_ram_bad    ;If Z = 0, then A!=(HL), so memory fail
+163   20BB EA B4 20         JP PE, .test_mem00      ;If BC-1 != 0 -> P = 1 -> Go to test next mem position
+164   20BE              .test_ram_ok:               ;Print message "RAM OK"
+165   20BE 3E 00            LD A, 00H
+166   20C0 CD 17 21         CALL lcd_pos_bottom
+167   20C3 21 02 22         LD HL, dmsg_ram_ok
+168   20C6 CD 37 21         CALL lcd_print
+169   20C9 18 0C            JR .test_end
+170   20CB              .test_ram_bad:               ;Print message "RAM BAD"
+171   20CB 21 0E 22         LD HL, dmsg_ram_bad
+172   20CE 3E 00            LD A, 00H
+173   20D0 CD 17 21         CALL lcd_pos_bottom
+174   20D3 CD 37 21         CALL lcd_print
+175   20D6 76               HALT
+176   20D7              .test_end:                   ;From this point, RAM is good for use
+177   20D7
+178   20D7              ; LCD test
+179   20D7 CD F7 20         CALL lcd_clear
+180   20DA CD 01 21         CALL lcd_home
+181   20DD 21 1A 22         LD HL, dmsg_lcd_test
+182   20E0 CD 37 21         CALL lcd_print
+183   20E3 3E 00            LD A, 00H
+184   20E5 CD 17 21         CALL lcd_pos_bottom
+185   20E8 21 1A 22         LD HL, dmsg_lcd_test
+186   20EB CD 37 21         CALL lcd_print
+187   20EE
+188   20EE 21 B2 5A         LD HL, 5AB2H
+189   20F1 1E 04            LD E, 4
+190   20F3 CD 4F 21         CALL lcd_numh
+191   20F6
+192   20F6 76               HALT
+193   20F7
+194   20F7              ; ********************** Subroutines **********************
+195   20F7
+196   20F7              ; LCD clear ;
+197   20F7              ; Input: None ;
+198   20F7              ; Affects registers A, B, C
+199   20F7              lcd_clear:
+200   20F7 3E 01            LD A, 01H               ;Clear LCD
+201   20F9 0E 10            LD C, DSKY_LCDDATA
+202   20FB ED 79            OUT (C), A              ;Send LCD setup command
+203   20FD CD D8 21         CALL _lcd_e_pulse
+204   2100 C9               RET
+205   2101
+206   2101              ; Sets cursor to home (1st position, top line) ;
+207   2101              ; Input: None ;
+208   2101              ; Affects registers A, B, C
+209   2101              lcd_home:
+210   2101 3E 80            LD A, 80H               ;select 1st column and 1st row for data
+211   2103 0E 10            LD C, DSKY_LCDDATA
+212   2105 ED 79            OUT (C), A              ;Send LCD setup command
+213   2107 CD D8 21         CALL _lcd_e_pulse
+214   210A C9               RET
+215   210B
+216   210B              ; Sets printing cursor to some position in LCD line 1 (top line) ;
+217   210B              ; Input: Line 1 position 0 to F = A ;
+218   210B              ; Affects registers B, C
+219   210B              lcd_pos_top:
+220   210B E6 0F            AND 0FH                 ;Clear the A reg higher nibble
+221   210D F6 80            OR 80H                  ;Combines user informed position m with 8X => 8m
+222   210F 0E 10            LD C, DSKY_LCDDATA
+223   2111 ED 79            OUT (C), A              ;Send LCD setup command
+224   2113 CD D8 21         CALL _lcd_e_pulse
+225   2116 C9               RET
+226   2117
+227   2117              ; Sets printing cursor to some position in LCD line 2 (bottom line) ;
+228   2117              ; Input: Line 2 position 0 to F = A ;
+229   2117              ; Affects registers B, C, D ;
+230   2117              lcd_pos_bottom:
+231   2117 E6 0F            AND 0FH                 ;Clear the A reg higher nibble
+232   2119 F6 C0            OR 0C0H                 ;Combines user informed position m with CX => Cm
+233   211B 0E 10            LD C, DSKY_LCDDATA
+234   211D ED 79            OUT (C), A              ;Send LCD setup command
+235   211F CD D8 21         CALL _lcd_e_pulse
+236   2122 C9               RET
+237   2123
+238   2123              ; Turns on cursor blinking ;
+239   2123              ; Input: None ;
+240   2123              ; Affects registers A, B, C ;
+241   2123              lcd_cursor_blink:
+242   2123 3E 0F            LD A, 0FH               ;Enables display and cursor blinking
+243   2125 0E 10            LD C, DSKY_LCDDATA
+244   2127 ED 79            OUT (C), A              ;Send LCD setup command
+245   2129 CD D8 21         CALL _lcd_e_pulse
+246   212C C9               RET
+247   212D
+248   212D              ; Turns off cursor ;
+249   212D              ; Input: None ;
+250   212D              ; Affects registers A, B, C ;
+251   212D              lcd_cursor_off:
+252   212D 3E 0F            LD A, 0FH               ;Enables display, cursor and blinking
+253   212F 0E 10            LD C, DSKY_LCDDATA
+254   2131 ED 79            OUT (C), A              ;Send LCD setup command
+255   2133 CD D8 21         CALL _lcd_e_pulse
+256   2136 C9               RET
+257   2137
+258   2137              ; LCD text print ;
+259   2137              ; Input: HL = Text begin memory pointer ;
+260   2137              ; Affects registers A, F, B, C, D, E, H, L
+261   2137              lcd_print:
+262   2137 F5               PUSH AF
+263   2138 C5               PUSH BC
+264   2139 D5               PUSH DE
+265   213A 1E 00            LD E, 00H               ;Initializes char counter (Reg E)
+266   213C              .lcd_print_loop:
+267   213C 3E 00            LD A, 00H               ;Sets A reg as NUL char for searching string end
+268   213E 56               LD D, (HL)              ;Retrieves the char from the current memory location
+269   213F ED A1            CPI                     ;Compare if (HL) position has a null char and Increment HL
+270   2141 28 08            JR Z, .lcd_print_end    ;If Z = 1, then A=(HL), so message end
+271   2143 CD 85 21         CALL _lcd_print_char
+272   2146 1C               INC E                   ;Increment char printed
+273   2147 FE 0F            CP 15
+274   2149 20 F1            JR NZ, .lcd_print_loop
+275   214B              .lcd_print_end:
+276   214B D1               POP DE
+277   214C C1               POP BC
+278   214D F1               POP AF
+279   214E C9               RET
+280   214F
+281   214F              ; LCD hex number print ;
+282   214F              ; Input: HL = number to be printed, E = digits to be printed (2 or 4) ;
+283   214F              ; Registers pushed A, F, B, C, D, E, H, L
+284   214F              lcd_numh:
+285   214F F5               PUSH AF
+286   2150 C5               PUSH BC
+287   2151 D5               PUSH DE
+288   2152                  ;Prints H, high nibble.
+289   2152 7C               LD A, H
+290   2153 06 04            LD B, 04H               ;Rotates 4 bits to the right to: high nibble of H -> low nibble
+291   2155              .lcd_numh_H_hi_nibble    ; "
+292   2155 1F               RRA                     ; "
+293   2156 10 FD            DJNZ .lcd_numh_H_hi_nibble ; "
+294   2158 CD 94 21         CALL _conv_hex_asc
+295   215B 57               LD D, A
+296   215C CD 85 21         CALL _lcd_print_char
+297   215F                  ;Prints H, low nibble.
+298   215F 7C               LD A, H
+299   2160 CD 94 21         CALL _conv_hex_asc
+300   2163 57               LD D, A
+301   2164 CD 85 21         CALL _lcd_print_char
+302   2167 7B               LD A, E                 ;If less than 3 digits (1 or 2 digit) was defined in E reg, jumps drcly to subr end
+303   2168 FE 03            CP 03
+304   216A 38 15            JR C, .lcd_numh_end
+305   216C                  ;Prints L, high nibble
+306   216C 7D               LD A, L
+307   216D 06 04            LD B, 04H               ;Rotates 4 bits to the right to: high nibble of H -> low nibble
+308   216F              .lcd_numh_L_hi_nibble    ; "
+309   216F 1F               RRA                     ; "
+310   2170 10 FD            DJNZ .lcd_numh_L_hi_nibble ; "
+311   2172 CD 94 21         CALL _conv_hex_asc
+312   2175 57               LD D, A
+313   2176 CD 85 21         CALL _lcd_print_char
+314   2179                  ;Prints L, low nibble
+315   2179 7D               LD A, L
+316   217A CD 94 21         CALL _conv_hex_asc
+317   217D 57               LD D, A
+318   217E CD 85 21         CALL _lcd_print_char
+319   2181              .lcd_numh_end
+320   2181 D1               POP DE
+321   2182 C1               POP BC
+322   2183 F1               POP AF
+323   2184 C9               RET
+324   2185
+325   2185              ; Prints one char in LCD current cursor position ;
+326   2185              ; Input: D = ASCII char ;
+327   2185              ; Registers affected: C, D
+328   2185              _lcd_print_char:
+329   2185 0E 10            LD C, DSKY_LCDDATA
+330   2187 ED 51            OUT (C), D              ;Send LCD setup command
+331   2189 0E 12            LD C, DSKY_LCDE_RW_RS
+332   218B 16 05            LD D, 05H
+333   218D ED 51            OUT (C), D              ;Set E and RS pins
+334   218F                  ; -- Delay to be considered
+335   218F 16 00            LD D, 00H
+336   2191 ED 51            OUT (C), D              ;Reset E and RS pins
+337   2193 C9               RET
+338   2194
+339   2194              ; Converts hex digits into ASCII '0' to '9', 'A' to 'F' ;
+340   2194              ; Input: A = num. hex digit (in low nibble) ;
+341   2194              ; Output: A = ASCII corresponding code ;
+342   2194              _conv_hex_asc:
+343   2194 E6 0F            AND 0FH                 ;Fiters out the resulting high nibble
+344   2196 FE 09            CP 09H                  ;If greater than 09H, execute ASCII 'A' to 'F' equivalence for hex digit
+345   2198 DA D5 21         JP C, .conv_0to9_a
+346   219B              .conv_a2f_a:
+347   219B FE 0A            CP 0AH
+348   219D C2 A4 21         JP NZ, .conv_a2f_b
+349   21A0 3E 41            LD A, 'A'
+350   21A2 18 33            JR .conv_hex_asc_end
+351   21A4              .conv_a2f_b:
+352   21A4 FE 0B            CP 0BH
+353   21A6 C2 AD 21         JP NZ, .conv_a2f_c
+354   21A9 3E 42            LD A, 'B'
+355   21AB 18 2A            JR .conv_hex_asc_end
+356   21AD              .conv_a2f_c:
+357   21AD FE 0C            CP 0CH
+358   21AF C2 B6 21         JP NZ, .conv_a2f_d
+359   21B2 3E 43            LD A, 'C'
+360   21B4 18 21            JR .conv_hex_asc_end
+361   21B6              .conv_a2f_d:
+362   21B6 FE 0D            CP 0DH
+363   21B8 C2 BF 21         JP NZ, .conv_a2f_e
+364   21BB 3E 44            LD A, 'D'
+365   21BD 18 18            JR .conv_hex_asc_end
+366   21BF              .conv_a2f_e:
+367   21BF FE 0E            CP 0EH
+368   21C1 C2 C8 21         JP NZ, .conv_a2f_f
+369   21C4 3E 45            LD A, 'E'
+370   21C6 18 0F            JR .conv_hex_asc_end
+371   21C8              .conv_a2f_f:
+372   21C8 FE 0F            CP 0FH
+373   21CA C2 D1 21         JP NZ, .conv_hex_asc_void
+374   21CD 3E 46            LD A, 'F'
+375   21CF 18 06            JR .conv_hex_asc_end
+376   21D1              .conv_hex_asc_void:
+377   21D1 3E 3F            LD A, '?'
+378   21D3 18 02            JR .conv_hex_asc_end
+379   21D5              .conv_0to9_a:
+380   21D5 C6 30            ADD A, 30H              ;If less than or equal to '0' to 'F', adds 30H to get corresponding ASCII code for the digit
+381   21D7              .conv_hex_asc_end:
+382   21D7 C9               RET
+383   21D8
+384   21D8              ; Pulse E pin of LCD for LCD commands confirmation
+385   21D8              ; Input: None ;
+386   21D8              ; Registers affected: B, C
+387   21D8              _lcd_e_pulse:
+388   21D8 0E 12            LD C, DSKY_LCDE_RW_RS
+389   21DA 06 04            LD B, 04H
+390   21DC ED 41            OUT (C), B              ;Set E pin
+391   21DE 06 05            LD B, 5
+392   21E0              .lcd_e_pulse_dly:
+393   21E0 10 FE            DJNZ .lcd_e_pulse_dly
+394   21E2 0E 12            LD C, DSKY_LCDE_RW_RS
+395   21E4 06 00            LD B, 00H
+396   21E6 ED 41            OUT (C), B              ;Reset E pin
+397   21E8 C9               RET
+398   21E9
+399   21E9              ; Delay (operative, ms) for clk = 1 MHz ;
+400   21E9              ; Input: A = delay time (ms) 0,5% ;
+401   21E9              ; Affects registers A, B, F
+402   21E9              delay_ms:
+403   21E9 F5               PUSH AF
+404   21EA              .delay_mult:
+405   21EA 78               LD A, B
+406   21EB 06 4B            LD B, 75                ;Number of loops adjusted to A = delay ms with minimum error
+407   21ED              .delay_1ms:
+408   21ED 10 FE            DJNZ .delay_1ms
+409   21EF 47               LD B, A
+410   21F0 10 F8            DJNZ .delay_mult
+411   21F2 F1               POP AF
+412   21F3 C9               RET
+413   21F4
+414   21F4
+415   21F4              ; ******* S A F E T Y  H A L T *******
+416   21F4 76               HALT
+417   21F5
+418   21F5
+419   21F5              ; ********************** Fixed data **********************
+420   21F5              ; Text messages
+421   21F5              dmsg_hello EQU $
+422   21F5 20 20 20 20      DB "    Z80 COOL", 00h
+422   21F9 5A 38 30 20
+422   21FD 43 4F 4F 4C
+422   2201 00
+423   2202              dmsg_ram_ok EQU $
+424   2202 20 20 20 20      DB "     RAM OK", 00h
+424   2206 20 52 41 4D
+424   220A 20 4F 4B 00
+425   220E              dmsg_ram_bad EQU $
+426   220E 20 20 20 20      DB "    RAM BAD", 00h
+426   2212 52 41 4D 20
+426   2216 42 41 44 00
+427   221A              dmsg_lcd_test
+428   221A 2A 23 23 23      DB "*##############*", 00h
+428   221E 23 23 23 23
+428   2222 23 23 23 23
+428   2226 23 23 23 2A
+428   222A 00
+429   222B
+430   222B
+431   222B              ; ********************** BIOS PROGRAM AND DATA END **********************
+432   222B
+433   222B
+434   222B ~            /* PARKING LOT
+435   222B ~
+436   222B ~            // IDEA FOR PRINTING NUMBERS
+437   222B ~                LD HL, 4000H
+438   222B ~                LD (HL), ' '
+439   222B ~                INC HL
+440   222B ~                LD D, B
+441   222B ~                LD A, D
+442   222B ~                LD B, 04H
+443   222B ~            rot_reg:
+444   222B ~                RRA
+445   222B ~                DJNZ rot_reg
+446   222B ~                AND 0FH
+447   222B ~                ADD A, 30H
+448   222B ~                LD (HL), A
+449   222B ~                INC HL
+450   222B ~                LD A, D
+451   222B ~                AND 0FH
+452   222B ~                ADD A, 30H
+453   222B ~                LD (HL), A
+454   222B ~                INC HL
+455   222B ~                LD (HL), 00H
+456   222B ~
+457   222B ~
+458   222B ~            */
+459   222B
 # file closed: Z80_Cool_BIOS.asm

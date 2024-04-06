@@ -1,0 +1,6 @@
+Magnitude comparison
+
+CP x
+..... If A = x, Z flag is set
+..... If A < x, C flag is set
+..... If A > x, nothing is set

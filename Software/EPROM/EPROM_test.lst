@@ -1,0 +1,42 @@
+# file opened: EPROM_test.asm
+EPROM_test.asm(1): error: Expression error: ==========================================================================
+EPROM_test.asm(1): error: Unexpected: ==========================================================================
+EPROM_test.asm(1): error: Invalid labelname:
+ 1    0000              ===========================================================================
+ 2    0000              ; Thiago Turcato do Rego - 2023
+ 3    0000              ; Project: Z80 COOL, Z80 computer in breadboard
+ 4    0000              ; File: BIOS program
+ 5    0000              ;===========================================================================
+ 6    0000
+ 7    0000              ; Compilation directives for allocating memory (no bank) and SLD file generation
+ 8    0000               DEVICE NOSLOT64K
+ 9    0000               SLDOPT COMMENT WPMEM, LOGPOINT, ASSERTION
+10    0000
+11    0000              ; Variable definition
+12    0000              ;EPRBEGIN    EQU 0x0000
+13    0000              ;EPRSIZE     EQU 0x2000
+14    0000              ;EEPBEGIN    EQU 0x2000
+15    0000              ;EEPSIZE     EQU 0x2000
+16    0000              ;RAMBEGIN    EQU 0x4000
+17    0000              ;RAMSIZE     EQU 0x2000
+18    0000
+19    0000
+20    0000              ; Beggining of BIOS program
+21    0000                  ORG 0000H
+22    0000              ;entry_point:
+23    0000
+24    0000              ; ********************** Main Program **********************
+25    0000
+26    0000              ; Program setup & initialization
+27    0000              ;    LD SP, stack_top            ;Set stack pointer to the end of the ram
+28    0000              ; Stall begin for address sequencing test and redirection to EEPROM
+29    0000 00               NOP
+30    0001 00               NOP
+31    0002 00               NOP
+32    0003 00               NOP
+33    0004 00               NOP
+34    0005 C3 00 20         JP 2000H
+35    0008 00               NOP
+36    0009 76               HALT
+37    000A              ; Program End
+# file closed: EPROM_test.asm

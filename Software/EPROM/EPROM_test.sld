@@ -1,0 +1,11 @@
+|SLD.data.version|1
+||K|KEYWORDS|WPMEM,LOGPOINT,ASSERTION
+EPROM_test.asm|8||0|-1|-1|Z|pages.size:65536,pages.count:32,slots.count:1,slots.adr:0
+EPROM_test.asm|29||0|0|0|T|
+EPROM_test.asm|30||0|0|1|T|
+EPROM_test.asm|31||0|0|2|T|
+EPROM_test.asm|32||0|0|3|T|
+EPROM_test.asm|33||0|0|4|T|
+EPROM_test.asm|34||0|0|5|T|
+EPROM_test.asm|35||0|0|8|T|
+EPROM_test.asm|36||0|0|9|T|
