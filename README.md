@@ -9,6 +9,7 @@ As in April, 2024 it is a work in progress.
 In this repository you will find either hardware and software documentation for building the computer.
 
 
+-------------------------------------------------------------------------------------------------------------
 (br-pt)
 
 Esse repositório contem os arquivos para montagem de um computador baseado em processador Z80.
