@@ -1,0 +1,43 @@
+Name     Clock_switcher;
+PartNo   00;
+Date     21/06/2024;
+Revision 01;
+Designer Thiago Turcato do Rego;
+Company  TTR;
+Assembly None;
+Location Brazil;
+Device   g16v8a;
+
+/* *************** INPUT PINS *********************/
+PIN  2   =  CKS   ; /* Slow Clock                                  */ 
+PIN  3   =  CKF   ; /* Fast Clock                                  */ 
+PIN  4   =  SEL   ; /* Select 0=CKF 1=CKS                          */ 
+PIN  5   =  WR    ; /* Write Select Data (active low, to CPU WR)   */ 
+PIN  6   =  EN    ; /* Enable (active low, to CPU IOREQ)           */
+PIN  7   =  RS    ; /* Reset (active low)                          */
+PIN  8   =  FRSC  ; /* Force slow clock (active low)               */
+PIN  9   =  FRFC  ; /* Force fast clock (active low)               */
+
+
+/* *************** OUTPUT PINS *********************/
+PIN  19  =  CKO   ; /* Clock output                    */ 
+PIN  18  =  Q1    ; /* FF1 D type Q                    */ 
+PIN  17  =  QN1   ; /* FF1 D type QN                   */ 
+PIN  16  =  Q2    ; /* FF2 D type Q                    */ 
+PIN  15  =  QN2   ; /* FF2 D type QN                   */
+
+
+/* Flip Flop D type - 1*/
+Q1= !(QN1 # ((!D1 & E1) # !RS));
+QN1 = !(Q1 # (D1 & E1));
+
+/* Flip Flop D type - 2*/
+Q2 = !(QN2 # ((!D2 & E2) # !RS # !FRSC));
+QN2 = !(Q2 # ((D2 & E2) # !FRSC));
+
+/* Core logic for clock switcher  */
+E2 = !(CKS # CKF);
+D1 = SEL;
+E1 = !(WR # EN);
+D2 = Q1;
+CKO = (CKS & Q2) # (CKF & !Q2);

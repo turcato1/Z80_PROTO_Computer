@@ -1,0 +1,8 @@
+%SIGNAL
+PIN   3 =  ACT 
+PIN   4 =  BLNK 
+PIN  18 =  CKFA 
+PIN  19 =  CKSA 
+PIN   2 =  SEL 
+%END
+

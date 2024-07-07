@@ -1,0 +1,163 @@
+{COMPONENT D:\USERS\TURCATOLAB\ONEDRIVE\THIAGO\PROJETOS\2023 12 Z80 COMPUTER\HARDWARE\CLOCK SWITCHER\GAL16V8 PROJECT\CLOCK_SWITCHER.SYM
+
+ {ENVIRONMENT
+  {PDIFvrev 3.00}
+  {Program "CUPL(WM) Version 5.0a"}
+  {DBtype "Schematic"}
+  {DBvrev 1.01}
+  {DBtime "Sat Jun 22 01:57:31 2024 "}
+  {DBunit "MIL"}
+  {DBgrid 10}
+  {Lyrstr "WIRES" 1 "BUS" 1 "GATE" 2 "IEEE" 2 "PINFUN" 3 "PINNUM" 1 
+          "PINNAM" 6 "PINCON" 4 "REFDES" 2 "ATTR" 6 "SDOT" 1 
+          "DEVICE" 5 "OUTLIN" 5 "ATTR2" 6 "NOTES" 6 "NETNAM" 4 
+          "CMPNAM" 5 "BORDER" 5}
+ }
+
+ {USER
+  {VIEW
+   {Mode SYMB}
+   {Nlst OPEN}
+   {Vw 0 0 2}
+   {Lv 12 2 2 2 0 0 2 2 2 2 0 0 2 1 2 0 0 0 0}
+   {Gs 10 10}
+  }
+ }
+
+ {DISPLAY
+  [Ly "PINNUM"]
+  [Ls "SOLID"][Wd 0]
+  [Ts 15][Tj "LC"][Tr 0][Tm "N"]
+ }
+
+ {SYMBOL
+  {PIN_DEF
+   [Ly "PINCON"]
+   {P CKS {Pt "INPUT"}{Lq 0}{Ploc 100 160}}
+   {P CKF {Pt "INPUT"}{Lq 0}{Ploc 100 140}}
+   {P SEL {Pt "INPUT"}{Lq 0}{Ploc 100 120}}
+   {P WR {Pt "INPUT"}{Lq 0}{Ploc 100 100}}
+   {P EN {Pt "INPUT"}{Lq 0}{Ploc 100 80}}
+   {P RS {Pt "INPUT"}{Lq 0}{Ploc 100 60}}
+   {P FRSC {Pt "INPUT"}{Lq 0}{Ploc 100 40}}
+   {P FRFC {Pt "INPUT"}{Lq 0}{Ploc 100 20}}
+   {P QN2 {Pt "I/O"}{Lq 0}{Ploc 280 20}}
+   {P Q2 {Pt "I/O"}{Lq 0}{Ploc 280 40}}
+   {P QN1 {Pt "I/O"}{Lq 0}{Ploc 280 60}}
+   {P Q1 {Pt "I/O"}{Lq 0}{Ploc 280 80}}
+   {P CKO {Pt "I/O"}{Lq 0}{Ploc 280 100}}
+  }
+
+  {PKG
+   [Ly "REFDES"]
+   [Ts 25][Tj "CB"][Tr 0][Tm "N"]
+   {Rdl 190 190}
+
+   [Ly "PINNUM"]
+   [Ts 15][Tj "RC"]
+   {Pnl 120 170}
+   {Pnl 120 150}
+   {Pnl 120 130}
+   {Pnl 120 110}
+   {Pnl 120 90}
+   {Pnl 120 70}
+   {Pnl 120 50}
+   {Pnl 120 30}
+   [Ts 15][Tj "LC"]
+   {Pnl 260 30}
+   {Pnl 260 50}
+   {Pnl 260 70}
+   {Pnl 260 90}
+   {Pnl 260 110}
+
+   {Sd A 2 3 4 5 6 7 8 9 15 16 17 18 19}
+  }
+
+  {PIC
+   [Ly "GATE"]
+   [Ts 15][Tj "LC"][Tr 0][Tm "N"]
+   {R 130 180 250 0}
+   {L 130 160 100 160}
+   {L 130 140 100 140}
+   {L 130 120 100 120}
+   {L 130 100 100 100}
+   {L 130 80 100 80}
+   {L 130 60 100 60}
+   {L 130 40 100 40}
+   {L 130 20 100 20}
+   {L 250 20 280 20}
+   {L 250 40 280 40}
+   {L 250 60 280 60}
+   {L 250 80 280 80}
+   {L 250 100 280 100}
+   [Ly "PINNAM"]
+   [Tj "LC"]
+   {T "CKS" 140 160}
+   {T "CKF" 140 140}
+   {T "SEL" 140 120}
+   {T "WR" 140 100}
+   {T "EN" 140 80}
+   {T "RS" 140 60}
+   {T "FRSC" 140 40}
+   {T "FRFC" 140 20}
+   [Tj "RC"]
+   {T "QN2" 240 20}
+   {T "Q2" 240 40}
+   {T "QN1" 240 60}
+   {T "Q1" 240 80}
+   {T "CKO" 240 100}
+   [Ly "DEVICE"]
+   [Tj "CT"]
+   {T "G16V8MA" 190 -10}
+  }
+
+  {ATR
+   {IN
+    {Org 100 20}
+    {Ty 255}
+   }
+   {EX
+    [Ly "ATTR2"]
+    [Ts 12][Tj "CT"][Tr 0][Tm "N"]
+    {At PLD D:\USERS\TURCATOLAB\ONEDRIVE\THIAGO\PROJETOS\2023 12 Z80 COMPUTER\HARDWARE\CLOCK SWITCHER\GAL16V8 PROJECT\CLOCK_SWITCHER 190 180}
+   }
+  }
+ }
+
+ {DETAIL
+  {ANNOTATE
+  }
+
+  {NET_DEF
+   {N CKS
+   }
+   {N CKF
+   }
+   {N SEL
+   }
+   {N WR
+   }
+   {N EN
+   }
+   {N RS
+   }
+   {N FRSC
+   }
+   {N FRFC
+   }
+   {N QN2
+   }
+   {N Q2
+   }
+   {N QN1
+   }
+   {N Q1
+   }
+   {N CKO
+   }
+  }
+
+  {SUBCOMP
+  }
+ }
+}

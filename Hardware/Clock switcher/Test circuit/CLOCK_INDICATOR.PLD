@@ -1,0 +1,27 @@
+Name     Clock_indicator ;
+PartNo   00 ;
+Date     22/06/2024 ;
+Revision 01 ;
+Designer Thiago Turcato do Rego ;
+Company  TTR ;
+Assembly None ;
+Location Brazil ;
+Device   g16v8a ;
+
+/* *************** INPUT PINS *********************/
+PIN  2   =  SEL   ; /* Select 0=CKF 1=CKS                          */ 
+PIN  3   =  ACT   ; /* Actual 0=CKF 1=CKS                          */ 
+PIN  4   =  BLNK  ; /* LED Blinking clock                          */
+
+/* *************** OUTPUT PINS *********************/
+PIN  19  =  CKSA  ; /* Slow Clock Active                           */ 
+PIN  18  =  CKFA  ; /* Fast Clock Active                           */
+
+/* SEL = ACT, OUTPUT = HI, ELSE = BLINK */
+EQ = !(SEL $ ACT) # BLNK;
+
+/* Slow clock active signaling */
+CKSA = (SEL & EQ);
+
+/* Fast clock active signaling */
+CKFA = (!SEL & EQ);
