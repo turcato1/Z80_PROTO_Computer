@@ -1,0 +1,254 @@
+---- TODO ----
+
+- Operação da tecla IV : Não será implementado. (= REG -> Reg. I)
+
+---- DONE ----
+- Operação da tecla ADR
+- Operação da tecla DAT
+- Rotina de loop tecla apertada, tecla solta
+- Operação da tecla +
+- Operação da tecla -
+- Operação da tecla GO
+- Operação da tecla REG
+
+---------------
+
+Programa Monitor NEMO-80 (New Monitor Z80)
+
+1- Permite entrada de programa em formato de opcodes
+2- Permite visualizar o valor dos registradores no momento atual (Chamada da subrotina "menu_reg")
+3- Permite ao usuário utilizar funções de acesso ao hardware ("BIOS")
+
+
+
+
+
+
+
+
+
+
+-------- TRECHOS DE CODIGOS ANTIGOS --------
+
+
+; Subrotina de entradas de dados sequencial pelo teclado (sys_in_data)
+; Entradas: 
+; (HL)   = DADO DE SISTEMA PARA CONTROLE DA ENTRADA DE DADOS:
+;        Bits:    K X X X  D D D D
+;          D D D D = Número de dígitos já entrados (zerar essa variavel antes de chamar a subrotina pela primeira vez)
+;          K       = Sinalizador de tecla pressionada anteriormente
+; (HL+1) = dígitos 1 e 2
+; (HL+2) = dígitos 3 e 4
+; (HL+3) = dígitos 5 e 6
+; 
+; Lógica em pseudo-programa de intertravamento para que o processamento da tecla ocorra uma vez 
+;  quando a tecla for pressionada:
+;
+; If !(keypress.bit7) then RST keyprsmem.bit7
+; If  (keypress.bit7) &&  (keyprsmem.bit7) then end
+; If  (keypress.bit7) && !(keyprsmem.bit7) then SET keyprsmem.bit7 and process the input
+sys_in_data:
+    PUSH BC                     ; Guarda na pilha valor atual de BC para poder usar BC na subrotina
+    PUSH DE                     ; Guarda o valor atual de DE para poder usar o D para o dado atualmente na variável de entrada
+    LD A,(RAM_KEYB_CONV)        ; Recupera tecla atualmente pressionada (keypress = RAM_KEYB_CONV)
+    BIT 7,A                     ; Testa bit 7 de RAM_KEYB_CONV para verificar se alguma tecla está pressionada (keypress.bit7)
+    JR Z,.reset_keyprsmem       ; Bit 7 keypress é zero (tecla solta): reseta bit 7 memória (keypressmem)
+    LD A,(HL)                   ; Recupera memória de tecla pressionada (keyprsmem)
+    BIT 7,A                     ; Testa bit 7, sinalizador de tecla pressionada anteriormente (keyprsmem.bit7)
+    JR NZ,.in_data_end          ; bit 7 memória não zero (setado): não faz nada, finaliza a subrotina
+    SET 7,A                     ; Seta bit 7 e segue com o processamento da tecla pressionada
+    LD (HL),A                   ; Salva na memória de tecla pressionada (keyprsmem), que há uma tecla pressionada (bit 7 setado)
+    AND 0FH                     ; Remove a parte mais significativa. Parte menos significativa é em qual digito está
+    LD C,A                      ; Armazena em C, qual o dígito atual no processo de entrada para poder usar A para processar valor de entrada
+    SRL C                       ; Divide o contador de dígitos por dois para calcular offset na memória de escrita do input.
+    LD B,00H                    ; Zera a parte mais significativa de BC para poder usar BC para somar o ponteiro de memória HL
+    BIT 0,A                     ; Verifica se o valor de contagem do dígito é par ou impar.
+    JR Z,.input_msnibble        ; Se for ímpar, valor vai no nibble mais significativo
+                                ; Se par, valor vai no nibble menos significativo.
+    LD A,(RAM_KEYB_CONV)        ; Recupera qual tecla foi pressionada atualmente
+    AND 0FH                     ; Garante que a parte mais significativa esteja zero
+    JR .input_writevar          ; Vai para trecho onde o valor de A será escrito dentro da variável de entrada
+.input_msnibble
+    LD A,(RAM_KEYB_CONV)        ; Recupera qual tecla foi pressionada atualmente
+    SLA A                       ; Desloca o valor da tecla, um nibble para a esquerda (4x SLA A), prench. c/ zero a parte menos significativa
+    SLA A
+    SLA A
+    SLA A
+.input_writevar
+    PUSH HL
+    INC HL                      ; Faz com que o ponteiro vá para a próxima posição de memória, onde começa a escrita da var. de entrada
+    ADD HL,BC                   ; Soma o valor do ponteiro HL com o offset calculado BC
+    JR C,.in_data_end           ; Se a soma do ponteiro estourar, significa erro e a subrotina é finalizada forçosamente
+    LD D,A                      ; Salva em D o valor atual da tecla pressionada
+    LD A,(HL)                   ; Recupera valor atual da variável de entrada para "encaixar" nova tecla pressionada
+    OR D                        ; Monta o valor da tecla pressionada em A
+    LD (HL),A                   ; Devolve o valor processado para a variável de entrada na posição HL
+    POP HL                      ; Recupera o valor inicial de HL
+    LD A,(HL)                   ; Lê o valor da variável de sistema
+    INC A                       ; Incrementa o ponteiro para a próxima posição de entrada
+    LD (HL),A                   ; Grava o valor incrementado de volta na variável de sistema
+    JR .in_data_end             ; Vai para o fim da subrotina. Fim do processamento de entrada (input)
+.reset_keyprsmem
+    LD A,(HL)                   ; HL contém a posição de memória da variável de sistema
+    RES 7,A                     ; Reseta o bit 7, sinalizador de tecla pressionada anteriormente
+    LD (HL),A                   ; Grava de volta na memória de sinalização de tecla pressionada anteriormente
+.in_data_end
+    POP DE                      ; Recupera registrador DE
+    POP BC                      ; Recupera registrador BC
+    RET
+
+
+-------------------------------------------------
+
+
+; Subrotina para entrada de valor binário via teclado
+; Entradas: 
+; HL = posição onde será armazenado o valor de entrada
+; D = indice de posição do dígito de entrada
+; Registradores afetados
+
+bin_input:
+    PUSH DE
+.test_key
+    LD A,(RAM_KEYB_CONV)
+    CP 00
+    JR Z,.reset_bit
+    CP 01
+    JR Z,.set_bit
+    POP DE
+    RET
+.set_bit
+    LD E,(HL)
+    LD A,D
+    CP 00
+    JR Z,.set_bit0
+    CP 01
+    JR Z,.set_bit1
+    CP 02
+    JR Z,.set_bit2
+    CP 03
+    JR Z,.set_bit3
+    CP 04
+    JR Z,.set_bit4
+    CP 05
+    JR Z,.set_bit5
+    POP DE
+    RET
+.reset_bit
+    LD E,(HL)
+    LD A,D
+    CP 00
+    JR Z,.rst_bit0
+    CP 01
+    JR Z,.rst_bit1
+    CP 02
+    JR Z,.rst_bit2
+    CP 03
+    JR Z,.rst_bit3
+    CP 04
+    JR Z,.rst_bit4
+    CP 05
+    JR Z,.rst_bit5
+    POP DE
+    RET
+.rst_bit0
+    RES 0,E
+    JR .end_bin_input
+.rst_bit1
+    RES 1,E
+    JR .end_bin_input
+.rst_bit2
+    RES 2,E
+    JR .end_bin_input
+.rst_bit3
+    RES 3,E
+    JR .end_bin_input
+.rst_bit4
+    RES 4,E
+    JR .end_bin_input
+.rst_bit5
+    RES 5,E
+    JR .end_bin_input
+.set_bit0
+    SET 0,E
+    JR .end_bin_input
+.set_bit1
+    SET 1,E
+    JR .end_bin_input
+.set_bit2
+    SET 2,E
+    JR .end_bin_input
+.set_bit3
+    SET 3,E
+    JR .end_bin_input
+.set_bit4
+    SET 4,E
+    JR .end_bin_input
+.set_bit5
+    SET 5,E
+    JR .end_bin_input
+.end_bin_input
+    LD (HL),E
+    POP DE
+    RET
+
+------------------------------------------------------------
+
+; Subrotina de decodificação de número hexadecimal de dois dígitos para exibição no display (sys_disphex)
+; Entrada:
+; (HL) = valor a ser decodificado. Valor decodificado é escrito diretamente em RAM_DISPLAY
+; C = Posição do dígito MENOS SIGNIFICATIVO onde imprimir o valor e quantos dígitos exibir
+;     Nibble menos significativo: Posição do dig. menos significativo dos displays -> 0  1  2  3    4  5
+;     Nibble mais significativo: Quais dígitos mostrar, binário: <Disp MS> <Disp LS>. Se 11, mostra dois dígitos.
+; Memória RAM_DRAFT1 utilizada
+;
+sys_disphex:
+    PUSH BC                     ; Reserva o valor de BC
+    PUSH DE                     ; Reserva o valor de DE
+    LD A,C                      ; Guarda o valor integral de C no rascunho de sistema
+    LD (RAM_DRAFT1),A 
+    AND 0FH                     ; Usando A, retira a parte mais significativa de C, para o cálculo do offset do display
+    LD C,A                      ; Escreve o valor filtrado de volta em C
+    LD A,(HL)                   ; Carrega o valor a ser decodificado para A
+    LD DE,HL                    ; Guarda a posição de memória da variável a decodificar em DE
+    LD HL,RAM_DISPLAY           ; Carrega a posição de memória RAM_DISPLAY no HL
+    LD B,00H                    ; Zera a parte mais significativa de BC 
+    ADD HL,BC                   ; Soma RAM_DISPLAY com o valor de C, que é o deslocamento de exibição
+    PUSH HL                     ; Reserva o valor de RAM_DISPLAY + C
+    AND 0FH                     ; Filtra a parte menos significativa do valor a ser exibido que está em A
+    LD C,A                      ; Carrega a parte menos significativa do valor a exibir em C
+    LD HL,DB_NUMCHAR             ; Carrega em HL primeira posição de decodificação (0)
+    ADD HL,BC                   ; Soma o valor a ser exibido + 1a. pos de decodif -> End. num. menos sig. a exibir no display = HL
+    LD A,(HL)                   ; Guarda em A o valor a exibir no display correspondente a HL
+    POP HL                      ; Recupera o último valor de HL = RAM_DISPLAY + C
+    LD (RAM_DRAFT2),A           ; Guarda no rascunho 2, o valor que será exibido no display da posição RAM_DISPLAY + A   
+    LD A,(RAM_DRAFT1)           ; Recupera o valor no rascunho 1, para verificar se exibe ou não o dígito
+    BIT 4,A                     ; Testa o bit de exibição do dígito menos significativo (display ls)
+    JR Z,.ignore_lsdisp         ; Se o bit é zero, ignorar a exibição do display ls
+    LD A,(RAM_DRAFT2)           ; Se o bit é um, recupera o dado a ser exibido no display ls 
+    LD (HL),A                   ; Escreve o valor do display ls a exibir na posição RAM_DISPLAY + C
+.ignore_lsdisp
+    DEC HL                      ; Decrementa a posição RAM_DISPLAY + C - 1
+    PUSH HL                     ; Reserva a posição RAM_DISPLAY + C - 1
+    LD HL,DE                    ; Recupera a posição do valor a ser exibido completo
+    LD A,(HL)                   ; Recupera o valor a ser exibido
+    SRL A                       ; Passa a parte mais significativa do valor a ser exibido para a parte menos significativo (4x SRL)
+    SRL A
+    SRL A
+    SRL A
+    LD C,A                      ; Carrega o valor da parte mais significativa    
+    LD HL,DB_NUMCHAR            ; Carrega em HL primeira posição de decodificação (0) 
+    ADD HL,BC                   ; Calcula o offset de onde está o valor decodificado
+    LD A,(HL)                   ; Carrega o valor decodificado da parte mais significativa
+    POP HL                      ; Recupera o valor do ponteiro RAM_DISPLAY + C - 1
+    LD (RAM_DRAFT2),A           ; Guarda no rascunho 2, o valor que será exibido no display da posição RAM_DISPLAY + A   
+    LD A,(RAM_DRAFT1)           ; Recupera o valor no rascunho 1, para verificar se exibe ou não o dígito
+    BIT 5,A                     ; Testa o bit de exibição do dígito menos significativo (display ls)
+    JR Z,.ignore_msdisp         ; Se o bit é zero, ignorar a exibição do display ms
+    LD A,(RAM_DRAFT2)           ; Se o bit é um, recupera o dado a ser exibido no display ms 
+    LD (HL),A                   ; Escreve o valor decodificado da parte mais significativa em RAM_DISPLAY + C - 1
+.ignore_msdisp:
+    POP DE                      ; Recupera o valor de DE
+    POP BC                      ; Recupera o valor de BC
+    RET
+    DB 00H

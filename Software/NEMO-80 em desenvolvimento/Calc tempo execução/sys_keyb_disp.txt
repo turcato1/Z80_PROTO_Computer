@@ -1,0 +1,105 @@
+sys_keyb_disp:
+    PUSH BC
+    PUSH HL
+    LD A,00                     
+    LD (RAM_KEYB_CONV),A        ; Limpa variável de memória do teclado antes de ler o teclado
+    LD A,01H                    ; Ajusta A para apontar para a primeira coluna de displays (mais significativa) 
+    LD HL,RAM_DISPLAY           ; Carrega no ponteiro HL primeiro endereço da RAM de sistema para o display
+.keyb_disp_loop:
+    OUT (SEL_DISP),A            ; Seleciona display apontado por A
+    LD C,A                      ; Guarda o valor de A
+    LD A,0FFH    
+    OUT (DISP),A
+    ;LD B, 1
+    ;CALL sys_delay_ms
+    IN A,(KEYB)                 ; Lê o teclado na coluna atual
+    CP 00
+    JR Z,.wr_display            ; Se nada foi lido do teclado (nenhuma tecla apertada), vai para a atualização do display direto
+    LD (RAM_KEYBOARD),A         ; Se algo foi lido do teclado, registra tecla para a coluna atual
+    LD A,C                      ; Recupera dado de qual coluna está sendo atualizada
+    LD (RAM_KEYB_COL),A         ; Registra na memória de qual coluna é a tecla apertada
+.keyb_disp_cnv:
+    LD A,(RAM_KEYBOARD)         ; Converte posição da tecla no valor correspondente que representa (função da tecla)
+    CP 01                       ; Não foi considerada ainda a coluna nesse ponto
+    JP Z,.keyb_disp_num_0
+    CP 02
+    JP Z,.keyb_disp_num_1
+    CP 04
+    JP Z,.keyb_disp_num_2
+    CP 08
+    JP Z,.keyb_disp_num_3
+    CP 16
+    JP Z,.keyb_disp_num_4
+    CP 32
+    JP Z,.keyb_disp_num_5
+    CP 64
+    JP Z,.keyb_disp_num_6
+    CP 128
+    JP Z,.keyb_disp_num_7
+    JR .wr_display
+.keyb_disp_num_0:
+    LD A,00H
+    LD B,A
+    JR .keyb_col
+.keyb_disp_num_1:
+    LD A,01H
+    LD B,A
+    JR .keyb_col
+.keyb_disp_num_2:
+    LD A,02H
+    LD B,A
+    JR .keyb_col
+.keyb_disp_num_3:
+    LD A,03H
+    LD B,A
+    JR .keyb_col
+.keyb_disp_num_4:
+    LD A,04H
+    LD B,A
+    JR .keyb_col
+.keyb_disp_num_5:
+    LD A,05H
+    LD B,A
+    JR .keyb_col
+.keyb_disp_num_6:
+    LD A,06H
+    LD B,A
+    JR .keyb_col
+.keyb_disp_num_7:
+    LD A,07H
+    LD B,A
+.keyb_col:
+    LD A,(RAM_KEYB_COL)         ; Decodifica a coluna e calcula o código correto da tecla (0~7H: coluna 1, 8~FH: coluna 2; 10~17H: coluna 3)
+    CP 01
+    JR Z,.keyb_cnv_plus0
+    CP 02
+    JR Z,.keyb_cnv_plus8
+    CP 04
+    JR Z,.keyb_cnv_plus16
+    JR .wr_display
+.keyb_cnv_plus0:                ; Identificado como tecla da coluna 1 (0~7H)
+    LD A,B
+    JR .keyb_cnv_end
+.keyb_cnv_plus8:                ; Identificado como tecla da coluna 2 (8~FH)
+    LD A,B
+    ADD A,08
+    JR .keyb_cnv_end
+.keyb_cnv_plus16:               ; Identificado como tecla da coluna 1 (10~17H)
+    LD A,B
+    ADD A,16
+.keyb_cnv_end:
+    SET 7,A                     ; Seta o bit 7 do valor convertido para dizer que a tecla foi lida, especialmente no caso do zero (0H)
+    LD (RAM_KEYB_CONV),A
+.wr_display:
+    LD A,(HL)
+    OUT (DISP),A
+    LD B, 2
+    CALL sys_delay_ms
+    INC HL
+    LD A,C
+    ADD A,A
+    CP 64
+    JP NZ, .keyb_disp_loop      ; Se não chegou na última coluna de atualização do display (64), vai para o próximo loop
+    POP HL
+    POP BC
+    RET

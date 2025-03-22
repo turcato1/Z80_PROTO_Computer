@@ -1,0 +1,39 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "type": "dezog",
+            "request": "launch",
+            "name": "Simulator - Bare Z80",
+            "remoteType": "zsim",
+            "zsim": {
+                "visualMemory": false,
+                "memoryModel": "RAM",
+                "cpuFrequency": 1000000,
+                "cpuLoadInterruptRange": 1
+            },
+            "sjasmplus": [
+                {
+                    "path": "NEMO-80.sld"
+                }
+            ],
+            "commandsAfterLaunch": ["-mv 0x2000 2048"],
+            "history": {
+                "reverseDebugInstructionCount": 1000000,
+                "spotCount": 10,
+                "codeCoverageEnabled": true
+            },
+            "startAutomatically": false,
+            "rootFolder": "${workspaceFolder}",
+            "loadObjs": [
+                {
+                    "path": "NEMO-80.obj",
+                    "start": "0x0000"
+                }
+            ],
+            "execAddress": "0x0000",
+            "topOfStack": "0x2800"
+        }
+    ]
+}

@@ -1,0 +1,460 @@
+# file opened: Z80_Proto_Firmware.asm
+  1   0000              ;===========================================================================
+  2   0000              ; Thiago Turcato do Rego - 2023
+  3   0000              ; Project: Z80 PROTO, Z80 computer in breadboard
+  4   0000              ; File: Firmware program (BIOS + Mini OS)
+  5   0000              ;===========================================================================
+  6   0000
+  7   0000              ;============ TERMINOLOGY, CONVENTIONS AND ORGANIZATION ====================
+  8   0000              ; -- TERMINOLOGIES --
+  9   0000              ; subr.  = subroutines
+ 10   0000              ; drcly = directly
+ 11   0000              ; aux. = auxiliary
+ 12   0000              ;
+ 13   0000              ; -- SYMBOLS CONVENTIONS --
+ 14   0000              ; - Symbols in UPPER CASE LETTERS = constants
+ 15   0000              ; - Labels starting with "." are local jump entry points
+ 16   0000              ; - Labels starting with "_" are local subroutines (aux. subr.)
+ 17   0000              ; - Labels starting with lower case letters (except for the cases below)
+ 18   0000              ;    are general function calls, open to any user
+ 19   0000              ; - Labels starting with "dmsg_" are ascii text formated messages to use
+ 20   0000              ;    for display (user interface messages)
+ 21   0000              ;
+ 22   0000              ;=============================================================================
+ 23   0000
+ 24   0000              ; Compilation directives for allocating memory (no bank) and SLD file generation
+ 25   0000               DEVICE NOSLOT64K
+ 26   0000               SLDOPT COMMENT WPMEM, LOGPOINT, ASSERTION
+ 27   0000
+ 28   0000              ;******** Constants definition ********
+ 29   0000
+ 30   0000              ; RAM first address and size
+ 31   0000              ROMBEGIN            EQU 0000H
+ 32   0000              ROMSIZE             EQU 2000H
+ 33   0000
+ 34   0000              ; RAM first address and size
+ 35   0000              EEPBEGIN            EQU 2000H
+ 36   0000              EEPSIZE             EQU 2000H
+ 37   0000
+ 38   0000              ; RAM first address and size
+ 39   0000              RAMBEGIN            EQU 4000H
+ 40   0000              RAMSIZE             EQU 2000H
+ 41   0000
+ 42   0000              ; I/O addresses
+ 43   0000              DSKY_LCDDATA        EQU 10H
+ 44   0000              DSKY_KEYB           EQU 11H
+ 45   0000              DSKY_LCDE_RW_RS     EQU 12H
+ 46   0000              DSKY_IOSETUP        EQU 13H
+ 47   0000
+ 48   0000
+ 49   0000              ;******** Beggining of program ********
+ 50   0000                  ORG 2000H
+ 51   2000              entry_point:
+ 52   2000
+ 53   2000              ; ********************** Main Program **********************
+ 54   2000
+ 55   2000              ; Program setup & initialization
+ 56   2000 31 FF 5F         LD SP, RAMBEGIN+RAMSIZE-1        ;Set stack pointer to the end of the ram
+ 57   2003
+ 58   2003              ; Board initialization without RAM memory
+ 59   2003
+ 60   2003              ; 8255 PIO setup
+ 61   2003              ; Port A: Output, LCD data
+ 62   2003              ; Port B: Input, keyboard read data
+ 63   2003              ; Port C: Output, LCD control signals & keyboard multiplex (sweeping)
+ 64   2003 3E 82            LD A,82H
+ 65   2005 D3 13            OUT (DSKY_IOSETUP),A                    ; Define 8255 mode and ports functions
+ 66   2007
+ 67   2007              ; DSKY LCD setup
+ 68   2007 3E 00            LD A,00H
+ 69   2009 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Reset E pin
+ 70   200B 3E 01            LD A,01H                                ; * CLEAR LCD *
+ 71   200D D3 10            OUT (DSKY_LCDDATA),A                    ; Send LCD setup command
+ 72   200F 3E 04            LD A,04H
+ 73   2011 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Set E pin
+ 74   2013 06 05            LD B,5                                  ; Define delay for LCD to execute command
+ 75   2015              .ini_dly_clearlcd:
+ 76   2015 10 FE            DJNZ .ini_dly_clearlcd                  ; Delay for LCD to execute command
+ 77   2017 3E 00            LD A,00H
+ 78   2019 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Reset E pin
+ 79   201B 3E 38            LD A,38H                                ; *LCD IN 8 BIT MODE *
+ 80   201D D3 10            OUT (DSKY_LCDDATA),A                    ; Send LCD setup command
+ 81   201F 3E 04            LD A,04H
+ 82   2021 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Set E pin
+ 83   2023 06 05            LD B,5                                  ; Define delay for LCD to execute command
+ 84   2025              .ini_dly_eightbitmd:
+ 85   2025 10 FE            DJNZ .ini_dly_eightbitmd                ; Delay for LCD to execute command
+ 86   2027 3E 00            LD A,00H
+ 87   2029 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Reset E pin
+ 88   202B 3E 80            LD A,80H                                ; * SETS CURSOR TO TOP LINE 1ST POSITION *
+ 89   202D D3 10            OUT (DSKY_LCDDATA),A                    ; Send LCD setup command
+ 90   202F 3E 04            LD A,04H
+ 91   2031 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Set E pin
+ 92   2033 06 05            LD B,5
+ 93   2035              .ini_dly_firstpos:
+ 94   2035 10 FE            DJNZ .ini_dly_firstpos
+ 95   2037 3E 00            LD A,00H
+ 96   2039 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Reset E pin
+ 97   203B 3E 0C            LD A,0CH                                ; * SETS DISPLAY ON, CURSOR OFF, NO BLINKING *
+ 98   203D D3 10            OUT (DSKY_LCDDATA),A                    ; Send LCD setup command
+ 99   203F 3E 04            LD A,04H
+100   2041 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Set E pin
+101   2043 06 05            LD B,5
+102   2045              .ini_dly_cursormd:
+103   2045 10 FE            DJNZ .ini_dly_cursormd
+104   2047 3E 00            LD A,00H
+105   2049 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Reset E pin
+106   204B 3E 06            LD A,06H                                ; * SETS CURSOR MOVING RIGHT AND NO TEXT SHIFTING *
+107   204D D3 10            OUT (DSKY_LCDDATA),A                    ; Send LCD setup command
+108   204F 3E 04            LD A,04H
+109   2051 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Set E pin
+110   2053 06 05            LD B,5
+111   2055              .ini_dly_cursorinc:
+112   2055 10 FE            DJNZ .ini_dly_cursorinc
+113   2057 3E 00            LD A,00H
+114   2059 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Reset E pin
+115   205B
+116   205B              ; Welcome & alive message
+117   205B 21 C3 21         LD HL, dmsg_hello                       ; Points HL to welcome message
+118   205E 1E 00            LD E, 00H                               ; Initializes char counter (Reg E)
+119   2060              .ini_loop:
+120   2060 3E 00            LD A,00H                                ; Sets A reg as NUL char for searching string end
+121   2062 56               LD D,(HL)                               ; Retrieves the char from the current memory location
+122   2063 ED A1            CPI                                     ; Compare if (HL) position has a null char and Increment HL
+123   2065 28 11            JR Z,.ini_end                           ; If Z = 1, then A=(HL), so message end
+124   2067 7A               LD A,D
+125   2068 D3 10            OUT (DSKY_LCDDATA),A                    ; Send LCD setup command
+126   206A 3E 05            LD A,05H
+127   206C D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Set E and RS pins
+128   206E 3E 00            LD A,00H
+129   2070 D3 12            OUT (DSKY_LCDE_RW_RS),A                 ; Reset E and RS pins
+130   2072 1C               INC E                                   ; Increment char printed
+131   2073 7B               LD A,E
+132   2074 FE 0F            CP 15
+133   2076 20 E8            JR NZ,.ini_loop
+134   2078              .ini_end:
+135   2078
+136   2078              ; Test RAM memory (ADDR RAMBEGIN ~ RAMBEGIN+RAMSIZE-1)
+137   2078              ; MEMORY TEST 1, FILL W/ 55H
+138   2078              test_sys:
+139   2078 21 00 40         LD HL, RAMBEGIN                         ; Set the memory pointer to first RAM address
+140   207B ED 4B FF 1F      LD BC, (RAMSIZE-1)                      ; Set the byte counter to memory size value
+141   207F              .test_mem55:                                ; Begin test sequence writing 55H in all memory positions
+142   207F 3E 55            LD A,55H
+143   2081 77               LD (HL),A                               ; Write 55H in (HL) memory position
+144   2082 ED A1            CPI                                     ; Increment HL, Decrement BC and if A=(HL) -> Z = 1
+145   2084 20 21            JR NZ,.test_ram_bad                     ; If Z = 0, then A!=(HL), so memory fail
+146   2086 EA 7F 20         JP PE,.test_mem55                       ; If BC-1 != 0 -> P = 1 -> Go to test next mem position
+147   2089                                                          ; If execution is here CPI reached the memory end, go to next test
+148   2089              ; MEMORY TEST 2, FILL W/ 00H
+149   2089 21 00 40         LD HL,RAMBEGIN                          ; Set the memory pointer to first RAM address
+150   208C ED 4B FF 1F      LD BC,(RAMSIZE-1)                       ; Set the byte counter to memory size value
+151   2090              .test_mem00:                                ; Begin test sequence writing 00H in all memory positions
+152   2090 3E 00            LD A,00H
+153   2092 77               LD (HL),A                               ; Write 00H in (HL) memory position
+154   2093 ED A1            CPI                                     ; Increment HL, Decrement BC and if A=(HL) -> Z = 1
+155   2095 20 10            JR NZ,.test_ram_bad                     ; If Z = 0, then A!=(HL), so memory fail
+156   2097 EA 90 20         JP PE,.test_mem00                       ; If BC-1 != 0 -> P = 1 -> Go to test next mem position
+157   209A              .test_ram_ok:                               ; Print message "RAM OK"
+158   209A 3E 00            LD A,00H
+159   209C CD ED 20         CALL lcd_pos_bottom
+160   209F 21 D0 21         LD HL,dmsg_ram_ok
+161   20A2 CD 07 21         CALL lcd_print
+162   20A5 18 0C            JR .test_end
+163   20A7              .test_ram_bad:                              ; Print message "RAM BAD"
+164   20A7 21 DC 21         LD HL,dmsg_ram_bad
+165   20AA 3E 00            LD A,00H
+166   20AC CD ED 20         CALL lcd_pos_bottom
+167   20AF CD 07 21         CALL lcd_print
+168   20B2 76               HALT
+169   20B3              .test_end:                                  ; From this point, RAM is good for use
+170   20B3
+171   20B3              ; LCD test
+172   20B3 CD D3 20         CALL lcd_clear
+173   20B6 CD DB 20         CALL lcd_home
+174   20B9 21 E8 21         LD HL, dmsg_lcd_test
+175   20BC CD 07 21         CALL lcd_print
+176   20BF 3E 00            LD A, 00H
+177   20C1 CD ED 20         CALL lcd_pos_bottom
+178   20C4 21 E8 21         LD HL, dmsg_lcd_test
+179   20C7 CD 07 21         CALL lcd_print
+180   20CA
+181   20CA 21 B2 5A         LD HL,5AB2H
+182   20CD 1E 04            LD E,4
+183   20CF CD 1F 21         CALL lcd_numh
+184   20D2
+185   20D2 76               HALT
+186   20D3
+187   20D3              ; ********************** Subroutines **********************
+188   20D3
+189   20D3              ; LCD clear ;
+190   20D3              ; Input: None ;
+191   20D3              ; Affects registers A, B, C
+192   20D3              lcd_clear:
+193   20D3 3E 01            LD A,01H                    ; Clear LCD
+194   20D5 D3 10            OUT (DSKY_LCDDATA),A        ; Send LCD setup command
+195   20D7 CD A6 21         CALL _lcd_e_pulse
+196   20DA C9               RET
+197   20DB
+198   20DB              ; Sets cursor to home (1st position, top line) ;
+199   20DB              ; Input: None ;
+200   20DB              ; Affects registers A, B, C
+201   20DB              lcd_home:
+202   20DB 3E 80            LD A,80H                    ; Select 1st column and 1st row for data
+203   20DD D3 10            OUT (DSKY_LCDDATA),A        ; Send LCD setup command
+204   20DF CD A6 21         CALL _lcd_e_pulse
+205   20E2 C9               RET
+206   20E3
+207   20E3              ; Sets printing cursor to some position in LCD line 1 (top line) ;
+208   20E3              ; Input: Line 1 position 0 to F = A ;
+209   20E3              ; Affects registers B, C
+210   20E3              lcd_pos_top:
+211   20E3 E6 0F            AND 0FH                     ; Clear the A reg higher nibble
+212   20E5 F6 80            OR 80H                      ; Combines user informed position m with 8X => 8m
+213   20E7 D3 10            OUT (DSKY_LCDDATA),A        ; Send LCD setup command
+214   20E9 CD A6 21         CALL _lcd_e_pulse
+215   20EC C9               RET
+216   20ED
+217   20ED              ; Sets printing cursor to some position in LCD line 2 (bottom line) ;
+218   20ED              ; Input: Line 2 position 0 to F = A ;
+219   20ED              ; Affects registers B, C, D ;
+220   20ED              lcd_pos_bottom:
+221   20ED E6 0F            AND 0FH                     ; Clear the A reg higher nibble
+222   20EF F6 C0            OR 0C0H                     ; Combines user informed position m with CX => Cm
+223   20F1 D3 10            OUT (DSKY_LCDDATA),A        ; Send LCD setup command
+224   20F3 CD A6 21         CALL _lcd_e_pulse
+225   20F6 C9               RET
+226   20F7
+227   20F7              ; Turns on cursor blinking ;
+228   20F7              ; Input: None ;
+229   20F7              ; Affects registers A, B, C ;
+230   20F7              lcd_cursor_blink:
+231   20F7 3E 0F            LD A,0FH                    ; Enables display and cursor blinking
+232   20F9 D3 10            OUT (DSKY_LCDDATA),A        ; Send LCD setup command
+233   20FB CD A6 21         CALL _lcd_e_pulse
+234   20FE C9               RET
+235   20FF
+236   20FF              ; Turns off cursor ;
+237   20FF              ; Input: None ;
+238   20FF              ; Affects registers A, B, C ;
+239   20FF              lcd_cursor_off:
+240   20FF 3E 0F            LD A,0FH                    ; Enables display, cursor and blinking
+241   2101 D3 10            OUT (DSKY_LCDDATA),A        ; Send LCD setup command
+242   2103 CD A6 21         CALL _lcd_e_pulse
+243   2106 C9               RET
+244   2107
+245   2107              ; LCD text print ;
+246   2107              ; Input: HL = Text begin memory pointer ;
+247   2107              ; Affects registers A, F, B, C, D, E, H, L
+248   2107              lcd_print:
+249   2107 F5               PUSH AF
+250   2108 C5               PUSH BC
+251   2109 D5               PUSH DE
+252   210A 1E 00            LD E, 00H                   ; Initializes char counter (Reg E)
+253   210C              .lcd_print_loop:
+254   210C 3E 00            LD A,00H                    ; Sets A reg as NUL char for searching string end
+255   210E 56               LD D,(HL)                   ; Retrieves the char from the current memory location
+256   210F ED A1            CPI                         ; Compare if (HL) position has a null char and Increment HL
+257   2111 28 08            JR Z,.lcd_print_end         ; If Z = 1, then A=(HL), so message end
+258   2113 CD 55 21         CALL _lcd_print_char
+259   2116 1C               INC E                       ; Increment char printed
+260   2117 FE 0F            CP 15
+261   2119 20 F1            JR NZ,.lcd_print_loop
+262   211B              .lcd_print_end:
+263   211B D1               POP DE
+264   211C C1               POP BC
+265   211D F1               POP AF
+266   211E C9               RET
+267   211F
+268   211F              ; LCD hex number print ;
+269   211F              ; Input: HL = number to be printed, E = digits to be printed (2 or 4) ;
+270   211F              ; Registers pushed A, F, B, C, D, E, H, L
+271   211F              lcd_numh:
+272   211F F5               PUSH AF
+273   2120 C5               PUSH BC
+274   2121 D5               PUSH DE
+275   2122                  ;Prints H, high nibble.
+276   2122 7C               LD A,H
+277   2123 06 04            LD B,04H                    ; Rotates 4 bits to the right to: high nibble of H -> low nibble
+278   2125              .lcd_numh_H_hi_nibble           ; "
+279   2125 1F               RRA                         ; "
+280   2126 10 FD            DJNZ .lcd_numh_H_hi_nibble  ; "
+281   2128 CD 62 21         CALL _conv_hex_asc
+282   212B 57               LD D,A
+283   212C CD 55 21         CALL _lcd_print_char
+284   212F                  ;Prints H, low nibble.
+285   212F 7C               LD A,H
+286   2130 CD 62 21         CALL _conv_hex_asc
+287   2133 57               LD D,A
+288   2134 CD 55 21         CALL _lcd_print_char
+289   2137 7B               LD A,E                      ; If less than 3 digits (1 or 2 digit) was defined in E reg, jumps drcly to subr end
+290   2138 FE 03            CP 03
+291   213A 38 15            JR C,.lcd_numh_end
+292   213C                  ;Prints L, high nibble
+293   213C 7D               LD A,L
+294   213D 06 04            LD B, 04H                   ; Rotates 4 bits to the right to: high nibble of H -> low nibble
+295   213F              .lcd_numh_L_hi_nibble           ; "
+296   213F 1F               RRA                         ; "
+297   2140 10 FD            DJNZ .lcd_numh_L_hi_nibble  ; "
+298   2142 CD 62 21         CALL _conv_hex_asc
+299   2145 57               LD D,A
+300   2146 CD 55 21         CALL _lcd_print_char
+301   2149                  ;Prints L, low nibble
+302   2149 7D               LD A,L
+303   214A CD 62 21         CALL _conv_hex_asc
+304   214D 57               LD D,A
+305   214E CD 55 21         CALL _lcd_print_char
+306   2151              .lcd_numh_end
+307   2151 D1               POP DE
+308   2152 C1               POP BC
+309   2153 F1               POP AF
+310   2154 C9               RET
+311   2155
+312   2155              ; Prints one char in LCD current cursor position ;
+313   2155              ; Input: D = ASCII char ;
+314   2155              ; Registers affected: C,D
+315   2155              _lcd_print_char:
+316   2155 0E 10            LD C,DSKY_LCDDATA
+Z80_Proto_Firmware.asm(317): error: Illegal instruction:     OUT (DSKY_LCDDATA),D        ; Send LCD setup command
+317   2157                  OUT (DSKY_LCDDATA),D        ; Send LCD setup command
+318   2157 0E 12            LD C, DSKY_LCDE_RW_RS
+319   2159 16 05            LD D, 05H
+320   215B ED 51            OUT (C),D                   ; Set E and RS pins
+321   215D                  ; -- Delay to be considered
+322   215D 16 00            LD D, 00H
+323   215F ED 51            OUT (C),D                   ; Reset E and RS pins
+324   2161 C9               RET
+325   2162
+326   2162              ; Converts hex digits into ASCII '0' to '9', 'A' to 'F' ;
+327   2162              ; Input: A = num. hex digit (in low nibble) ;
+328   2162              ; Output: A = ASCII corresponding code ;
+329   2162              _conv_hex_asc:
+330   2162 E6 0F            AND 0FH                 ;Fiters out the resulting high nibble
+331   2164 FE 09            CP 09H                  ;If greater than 09H, execute ASCII 'A' to 'F' equivalence for hex digit
+332   2166 DA A3 21         JP C, .conv_0to9_a
+333   2169              .conv_a2f_a:
+334   2169 FE 0A            CP 0AH
+335   216B C2 72 21         JP NZ, .conv_a2f_b
+336   216E 3E 41            LD A,'A'
+337   2170 18 33            JR .conv_hex_asc_end
+338   2172              .conv_a2f_b:
+339   2172 FE 0B            CP 0BH
+340   2174 C2 7B 21         JP NZ, .conv_a2f_c
+341   2177 3E 42            LD A,'B'
+342   2179 18 2A            JR .conv_hex_asc_end
+343   217B              .conv_a2f_c:
+344   217B FE 0C            CP 0CH
+345   217D C2 84 21         JP NZ, .conv_a2f_d
+346   2180 3E 43            LD A,'C'
+347   2182 18 21            JR .conv_hex_asc_end
+348   2184              .conv_a2f_d:
+349   2184 FE 0D            CP 0DH
+350   2186 C2 8D 21         JP NZ, .conv_a2f_e
+351   2189 3E 44            LD A,'D'
+352   218B 18 18            JR .conv_hex_asc_end
+353   218D              .conv_a2f_e:
+354   218D FE 0E            CP 0EH
+355   218F C2 96 21         JP NZ, .conv_a2f_f
+356   2192 3E 45            LD A,'E'
+357   2194 18 0F            JR .conv_hex_asc_end
+358   2196              .conv_a2f_f:
+359   2196 FE 0F            CP 0FH
+360   2198 C2 9F 21         JP NZ, .conv_hex_asc_void
+361   219B 3E 46            LD A,'F'
+362   219D 18 06            JR .conv_hex_asc_end
+363   219F              .conv_hex_asc_void:
+364   219F 3E 3F            LD A,'?'
+365   21A1 18 02            JR .conv_hex_asc_end
+366   21A3              .conv_0to9_a:
+367   21A3 C6 30            ADD A,30H                   ;If less than or equal to '0' to 'F', adds 30H to get corresponding ASCII code for the digit
+368   21A5              .conv_hex_asc_end:
+369   21A5 C9               RET
+370   21A6
+371   21A6              ; Pulse E pin of LCD for LCD commands confirmation
+372   21A6              ; Input: None ;
+373   21A6              ; Registers affected: B, C
+374   21A6              _lcd_e_pulse:
+375   21A6 0E 12            LD C, DSKY_LCDE_RW_RS
+376   21A8 06 04            LD B, 04H
+377   21AA ED 41            OUT (C), B              ;Set E pin
+378   21AC 06 05            LD B, 5
+379   21AE              .lcd_e_pulse_dly:
+380   21AE 10 FE            DJNZ .lcd_e_pulse_dly
+381   21B0 0E 12            LD C, DSKY_LCDE_RW_RS
+382   21B2 06 00            LD B, 00H
+383   21B4 ED 41            OUT (C), B              ;Reset E pin
+384   21B6 C9               RET
+385   21B7
+386   21B7              ; Delay (operative, ms) for clk = 1 MHz ;
+387   21B7              ; Input: A = delay time (ms) 0,5% ;
+388   21B7              ; Affects registers A, B, F
+389   21B7              delay_ms:
+390   21B7 F5               PUSH AF
+391   21B8              .delay_mult:
+392   21B8 78               LD A, B
+393   21B9 06 4B            LD B, 75                ;Number of loops adjusted to A = delay ms with minimum error
+394   21BB              .delay_1ms:
+395   21BB 10 FE            DJNZ .delay_1ms
+396   21BD 47               LD B, A
+397   21BE 10 F8            DJNZ .delay_mult
+398   21C0 F1               POP AF
+399   21C1 C9               RET
+400   21C2
+401   21C2
+402   21C2              ; ******* S A F E T Y  H A L T *******
+403   21C2 76               HALT
+404   21C3
+405   21C3
+406   21C3              ; ********************** Fixed data **********************
+407   21C3              ; Text messages
+408   21C3              dmsg_hello EQU $
+409   21C3 20 20 20 5A      DB "   Z80 PROTO", 00h
+409   21C7 38 30 20 50
+409   21CB 52 4F 54 4F
+409   21CF 00
+410   21D0              dmsg_ram_ok EQU $
+411   21D0 20 20 20 20      DB "     RAM OK", 00h
+411   21D4 20 52 41 4D
+411   21D8 20 4F 4B 00
+412   21DC              dmsg_ram_bad EQU $
+413   21DC 20 20 20 20      DB "    RAM BAD", 00h
+413   21E0 52 41 4D 20
+413   21E4 42 41 44 00
+414   21E8              dmsg_lcd_test
+415   21E8 2A 23 23 23      DB "*##############*", 00h
+415   21EC 23 23 23 23
+415   21F0 23 23 23 23
+415   21F4 23 23 23 2A
+415   21F8 00
+416   21F9
+417   21F9
+418   21F9              ; ********************** BIOS PROGRAM AND DATA END **********************
+419   21F9
+420   21F9
+421   21F9 ~            /* PARKING LOT
+422   21F9 ~
+423   21F9 ~            // IDEA FOR PRINTING NUMBERS
+424   21F9 ~                LD HL, 4000H
+425   21F9 ~                LD (HL), ' '
+426   21F9 ~                INC HL
+427   21F9 ~                LD D, B
+428   21F9 ~                LD A, D
+429   21F9 ~                LD B, 04H
+430   21F9 ~            rot_reg:
+431   21F9 ~                RRA
+432   21F9 ~                DJNZ rot_reg
+433   21F9 ~                AND 0FH
+434   21F9 ~                ADD A, 30H
+435   21F9 ~                LD (HL), A
+436   21F9 ~                INC HL
+437   21F9 ~                LD A, D
+438   21F9 ~                AND 0FH
+439   21F9 ~                ADD A, 30H
+440   21F9 ~                LD (HL), A
+441   21F9 ~                INC HL
+442   21F9 ~                LD (HL), 00H
+443   21F9 ~
+444   21F9 ~
+445   21F9 ~            */
+446   21F9
+# file closed: Z80_Proto_Firmware.asm
